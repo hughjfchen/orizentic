@@ -14,6 +14,7 @@ import           Control.Applicative        ((<$>), pure)
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
 import           Control.Monad.Reader       (MonadReader(..))
 import           Data.IORef
+import qualified Data.List                  as L
 import qualified Data.Map                   as M
 import           Data.Maybe                 (Maybe(..), maybe)
 import           Data.Text
@@ -68,12 +69,15 @@ createToken (Issuer issuer) (TTL ttl) (ResourceName resourceName) (Username name
                            , jti = stringOrURI $ toText uuid
                            , unregisteredClaims = M.empty
                            }
-    liftIO $ modifyIORef store (\st -> tok:st)
+    liftIO $ modifyIORef store ((:) tok)
     pure tok
 
 
 revokeToken :: TokenM m r => JWTClaimsSet -> m ()
-revokeToken = undefined
+revokeToken tok = do
+    (CapabilityCtx _ (TokenStore store)) <- hasCapabilityCtx <$> ask
+    liftIO $ modifyIORef store (L.delete tok)
+    pure ()
 
 listTokens :: TokenM m r => m [JWTClaimsSet]
 listTokens = do
