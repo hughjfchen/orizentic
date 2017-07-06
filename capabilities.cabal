@@ -1,0 +1,56 @@
+name:                capabilities
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/luminescentdreams/capabilities#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Savanni D'Gerinel
+maintainer:          example@example.com
+copyright:           2017 Savanni D'Gerinel
+category:            Web
+build-type:          Simple
+extra-source-files:  README.md
+cabal-version:       >=1.10
+
+flag dev
+    description:        Turn on development settings
+    manual:             True
+    default:            False
+
+library
+    exposed-modules:    LuminescentDreams.Capabilities
+
+    build-depends:        base  >= 4.7 && < 5
+                        , jwt   >= 0.7 && < 0.8
+                        , mtl   >= 2.2 && < 2.3
+                        , text  >= 1.2 && < 1.3
+                        , time  >= 1.6 && < 1.7
+
+    if flag(dev)
+        ghc-options:    -Wall -fno-warn-orphans
+    else
+        ghc-options:    -O2 -Wall -Werror -fno-warn-orphans
+    hs-source-dirs:     src
+    default-language:   Haskell2010
+
+
+test-suite capabilities-test
+    type:               exitcode-stdio-1.0
+    hs-source-dirs:     test
+    main-is:            Spec.hs
+
+    other-modules:      UnitSpec
+
+    build-depends:        base
+                        , capabilities
+                        , hspec
+                        , mtl
+
+    ghc-options:        -threaded -rtsopts -with-rtsopts=-N
+    default-language:   Haskell2010
+
+source-repository head
+    type:     git
+    location: https://github.com/luminescentdreams/capabilities
+

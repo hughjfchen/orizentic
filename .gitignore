@@ -1,0 +1,15 @@
+.cabal-sandbox
+cabal.sandbox.config
+dist
+dimensional-0.12.2
+var
+.stack-work/
+config.yml
+*.sqlite
+app.js
+node_modules/
+bundle/
+health.sqlite.backup
+tags
+www/.next
+index.js
