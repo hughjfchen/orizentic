@@ -21,11 +21,14 @@ flag dev
 library
     exposed-modules:    LuminescentDreams.Capabilities
 
-    build-depends:        base  >= 4.7 && < 5
-                        , jwt   >= 0.7 && < 0.8
-                        , mtl   >= 2.2 && < 2.3
-                        , text  >= 1.2 && < 1.3
-                        , time  >= 1.6 && < 1.7
+    build-depends:        base          >= 4.7      && < 5
+                        , jwt           >= 0.7      && < 0.8
+                        , containers    >= 0.5.7    && < 0.6
+                        , mtl           >= 2.2      && < 2.3
+                        , random        >= 1.1      && < 1.2
+                        , text          >= 1.2      && < 1.3
+                        , time          >= 1.6      && < 1.7
+                        , uuid          >= 1.3      && < 1.4
 
     if flag(dev)
         ghc-options:    -Wall -fno-warn-orphans

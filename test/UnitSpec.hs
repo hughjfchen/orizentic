@@ -17,7 +17,7 @@ instance HasCapabilityCtx Context where
     hasCapabilityCtx (Context c) = c
 
 newContext :: Secret -> IO Context
-newContext = undefined
+newContext secret = Context <$> newCapabilityContext secret
 
 newtype CapSpecM a = CapSpecM (ReaderT Context IO a)
     deriving (Functor, Applicative, Monad, MonadIO, MonadReader Context)
@@ -78,7 +78,7 @@ spec = describe "Capability Unit Tests" $ do
                         (ResourceName "resource-1")
                         (Username "Savanni")
                         (Permissions ["read", "write", "grant"])
-        let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") (claims token)
+        let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") token
         res <- runCapSpec ctx2 $ validateToken unverifiedJWT
         res `shouldBe` Nothing
 
@@ -90,11 +90,11 @@ spec = describe "Capability Unit Tests" $ do
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
-            let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") (claims tok)
+            let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") tok
             revokeToken tok
             validity <- validateToken unverifiedJWT
             pure (tok, validity)
-        Just tok `shouldNotBe` validity
+        (claims <$> validity) `shouldBe` Just tok
 
     it "validates present tokens with a valid secret" $ do
         ctx <- newContext (secret "ctx")
@@ -104,12 +104,12 @@ spec = describe "Capability Unit Tests" $ do
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
-            let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") (claims tok)
+            let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") tok
             validity <- validateToken unverifiedJWT
             pure (tok, validity)
-        Just tok `shouldBe` validity
+        (claims <$> validity) `shouldBe` Just tok
 
-    it "accepts authorization functions" $ pending
+    it "accepts authorization functions" pending
 
     it "rejects expired tokens" $ do
         ctx <- newContext (secret "ctx")
@@ -119,11 +119,11 @@ spec = describe "Capability Unit Tests" $ do
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
-            let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") (claims tok)
+            let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") tok
             validity1 <- validateToken unverifiedJWT
             liftIO $ threadDelay 2000000
             validity2 <- validateToken unverifiedJWT
             pure (tok, validity1, validity2)
-        Just tok `shouldBe` validity1
+        (claims <$> validity1) `shouldBe` Just tok
         validity2 `shouldBe` Nothing
 
