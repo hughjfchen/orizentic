@@ -5,7 +5,7 @@
 module LuminescentDreams.Capabilities where
 
 import Prelude  ( Bool(..), Either(..), Eq(..)
-                , ($), (.)
+                , ($), (.), (<)
                 , fromRational, toRational
                 , undefined
                 )
@@ -50,7 +50,22 @@ class HasCapabilityCtx ctx where
 type TokenM m r = (MonadIO m, MonadReader r m, HasCapabilityCtx r)
 
 validateToken :: TokenM m r => JWT UnverifiedJWT -> m (Maybe (JWT VerifiedJWT))
-validateToken = undefined
+validateToken jwt = do
+    now <- utcTimeToPOSIXSeconds <$> liftIO getCurrentTime
+    (CapabilityCtx secret (TokenStore store)) <- hasCapabilityCtx <$> ask
+    case verify secret jwt of
+        Nothing -> pure Nothing
+        Just vjwt -> if isExpired now (claims jwt)
+            then pure Nothing
+            else do lst <- listTokens
+                    if claims jwt `L.elem` lst
+                        then pure $ Just vjwt
+                        else pure Nothing
+    where
+    isExpired now claimsSet =
+        case secondsSinceEpoch <$> exp claimsSet of
+            Nothing -> False
+            Just expiration -> expiration < now
 
 checkAuthorizations :: (ResourceName -> Permissions -> Bool) -> JWT VerifiedJWT -> Bool
 checkAuthorizations = undefined

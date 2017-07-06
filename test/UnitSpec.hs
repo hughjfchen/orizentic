@@ -94,7 +94,7 @@ spec = describe "Capability Unit Tests" $ do
             revokeToken tok
             validity <- validateToken unverifiedJWT
             pure (tok, validity)
-        (claims <$> validity) `shouldBe` Just tok
+        validity `shouldBe` Nothing
 
     it "validates present tokens with a valid secret" $ do
         ctx <- newContext (secret "ctx")
