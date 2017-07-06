@@ -104,13 +104,22 @@ revokeToken tok = do
     liftIO $ modifyIORef store (L.delete tok)
     pure ()
 
+
 listTokens :: TokenM m r => m [JWTClaimsSet]
 listTokens = do
     (CapabilityCtx _ (TokenStore store)) <- hasCapabilityCtx <$> ask
     liftIO $ readIORef store
 
+
+encodeToken :: TokenM m r => JWTClaimsSet -> m Text
+encodeToken token = do
+    (CapabilityCtx secret _) <- hasCapabilityCtx <$> ask
+    pure $ encodeSigned HS256 secret token
+
+
 hasPermission :: Permissions -> Text -> Bool
 hasPermission (Permissions perms) p = p `L.elem` perms
+
 
 permissions :: JWTClaimsSet -> Permissions
 permissions claimsSet =

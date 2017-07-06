@@ -72,13 +72,13 @@ spec = describe "Capability Unit Tests" $ do
     it "rejects tokens with an invalid secret" $ do
         ctx1 <- newContext (secret "ctx1")
         ctx2 <- newContext (secret "ctx2")
-        token <- runCapSpec ctx1 $
-            createToken (Issuer "test")
-                        (TTL 3600)
-                        (ResourceName "resource-1")
-                        (Username "Savanni")
-                        (Permissions ["read", "write", "grant"])
-        let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") token
+        Just unverifiedJWT <- runCapSpec ctx1 $ do
+            token <- createToken (Issuer "test")
+                                 (TTL 3600)
+                                 (ResourceName "resource-1")
+                                 (Username "Savanni")
+                                 (Permissions ["read", "write", "grant"])
+            decode <$> encodeToken token
         res <- runCapSpec ctx2 $ validateToken unverifiedJWT
         res `shouldBe` Nothing
 
@@ -90,7 +90,7 @@ spec = describe "Capability Unit Tests" $ do
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
-            let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") tok
+            Just unverifiedJWT <- decode <$> encodeToken tok
             revokeToken tok
             validity <- validateToken unverifiedJWT
             pure (tok, validity)
@@ -104,7 +104,7 @@ spec = describe "Capability Unit Tests" $ do
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
-            let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") tok
+            Just unverifiedJWT <- decode <$> encodeToken tok
             validity <- validateToken unverifiedJWT
             pure (tok, validity)
         (claims <$> validity) `shouldBe` Just tok
@@ -117,7 +117,7 @@ spec = describe "Capability Unit Tests" $ do
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
-            let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") tok
+            Just unverifiedJWT <- decode <$> encodeToken tok
             validity1 <- validateToken unverifiedJWT
             liftIO $ threadDelay 2000000
             validity2 <- validateToken unverifiedJWT
@@ -133,7 +133,7 @@ spec = describe "Capability Unit Tests" $ do
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
-            let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") tok
+            Just unverifiedJWT <- decode <$> encodeToken tok
             Just jwt <- validateToken unverifiedJWT
             pure $ checkAuthorizations (\rn perms -> (rn == ResourceName "resource-1") && (perms `hasPermission` "grant"))
                                        jwt
@@ -147,7 +147,7 @@ spec = describe "Capability Unit Tests" $ do
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read"])
-            let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") tok
+            Just unverifiedJWT <- decode <$> encodeToken tok
             Just jwt <- validateToken unverifiedJWT
             pure $ checkAuthorizations (\rn perms -> (rn == ResourceName "resource-1") && (perms `hasPermission` "grant"))
                                        jwt
@@ -161,7 +161,7 @@ spec = describe "Capability Unit Tests" $ do
                                (ResourceName "resource")
                                (Username "Savanni")
                                (Permissions ["read, write, grant"])
-            let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") tok
+            Just unverifiedJWT <- decode <$> encodeToken tok
             Just jwt <- validateToken unverifiedJWT
             pure $ checkAuthorizations (\rn perms -> (rn == ResourceName "resource-1") && (perms `hasPermission` "grant"))
                                        jwt
