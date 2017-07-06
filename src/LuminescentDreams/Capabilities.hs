@@ -6,9 +6,8 @@
 module LuminescentDreams.Capabilities where
 
 import Prelude  ( Bool(..), Either(..), Eq(..)
-                , ($), (.), (<), (>>=)
-                , fromRational, toRational
-                , undefined, error, show
+                , ($), (.), (<)
+                , error, show
                 )
 
 import           Control.Applicative        ((<$>), pure)
@@ -18,9 +17,9 @@ import           Data.Aeson                 (fromJSON, toJSON, Result(..))
 import           Data.IORef                 (IORef, newIORef, modifyIORef, readIORef)
 import qualified Data.List                  as L
 import qualified Data.Map                   as M
-import           Data.Maybe                 (Maybe(..), maybe)
+import           Data.Maybe                 (Maybe(..))
 import           Data.Text                  (Text)
-import           Data.Time                  (UTCTime, NominalDiffTime, addUTCTime, getCurrentTime)
+import           Data.Time                  (NominalDiffTime, addUTCTime, getCurrentTime)
 import           Data.Time.Clock.POSIX      (utcTimeToPOSIXSeconds)
 import           Data.UUID                  (toText)
 import           System.Random              (randomIO)
@@ -42,9 +41,9 @@ newtype TokenStore = TokenStore (IORef [JWTClaimsSet])
 data CapabilityCtx = CapabilityCtx Secret TokenStore
 
 newCapabilityContext :: MonadIO m => Secret -> m CapabilityCtx
-newCapabilityContext secret = do
+newCapabilityContext s = do
     st <- liftIO $ TokenStore <$> newIORef []
-    pure $ CapabilityCtx secret st
+    pure $ CapabilityCtx s st
 
 class HasCapabilityCtx ctx where
     hasCapabilityCtx :: ctx -> CapabilityCtx
@@ -55,12 +54,12 @@ type TokenM m r = (MonadIO m, MonadReader r m, HasCapabilityCtx r)
 validateToken :: TokenM m r => JWT UnverifiedJWT -> m (Maybe (JWT VerifiedJWT))
 validateToken jwt = do
     now <- utcTimeToPOSIXSeconds <$> liftIO getCurrentTime
-    (CapabilityCtx secret (TokenStore store)) <- hasCapabilityCtx <$> ask
-    case verify secret jwt of
+    (CapabilityCtx s _) <- hasCapabilityCtx <$> ask
+    case verify s jwt of
         Nothing -> pure Nothing
         Just vjwt -> if isExpired now (claims jwt)
             then pure Nothing
-            else do lst <- listTokens
+            else do lst <- listClaims
                     if claims jwt `L.elem` lst
                         then pure $ Just vjwt
                         else pure Nothing
@@ -80,8 +79,8 @@ checkAuthorizations fn token =
         Just rn_ -> fn rn_ (permissions $ claimsSet)
 
 
-createToken :: TokenM m r => Issuer -> TTL -> ResourceName -> Username -> Permissions -> m JWTClaimsSet
-createToken (Issuer issuer) (TTL ttl) (ResourceName resourceName) (Username name) (Permissions perms) = do
+createClaims :: TokenM m r => Issuer -> TTL -> ResourceName -> Username -> Permissions -> m JWTClaimsSet
+createClaims (Issuer issuer) (TTL ttl) (ResourceName resourceName) (Username name) (Permissions perms) = do
     (CapabilityCtx _ (TokenStore store)) <- hasCapabilityCtx <$> ask
     now <- liftIO getCurrentTime
     uuid <- liftIO randomIO
@@ -98,23 +97,23 @@ createToken (Issuer issuer) (TTL ttl) (ResourceName resourceName) (Username name
     pure tok
 
 
-revokeToken :: TokenM m r => JWTClaimsSet -> m ()
-revokeToken tok = do
+revokeClaims :: TokenM m r => JWTClaimsSet -> m ()
+revokeClaims tok = do
     (CapabilityCtx _ (TokenStore store)) <- hasCapabilityCtx <$> ask
     liftIO $ modifyIORef store (L.delete tok)
     pure ()
 
 
-listTokens :: TokenM m r => m [JWTClaimsSet]
-listTokens = do
+listClaims :: TokenM m r => m [JWTClaimsSet]
+listClaims = do
     (CapabilityCtx _ (TokenStore store)) <- hasCapabilityCtx <$> ask
     liftIO $ readIORef store
 
 
 encodeToken :: TokenM m r => JWTClaimsSet -> m Text
 encodeToken token = do
-    (CapabilityCtx secret _) <- hasCapabilityCtx <$> ask
-    pure $ encodeSigned HS256 secret token
+    (CapabilityCtx s _) <- hasCapabilityCtx <$> ask
+    pure $ encodeSigned HS256 s token
 
 
 hasPermission :: Permissions -> Text -> Bool

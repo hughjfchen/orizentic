@@ -30,17 +30,17 @@ spec = describe "Capability Unit Tests" $ do
     it "can create a new token" $ do
         ctx <- newContext (secret "ctx")
         (tok, tok2, tokList) <- runCapSpec ctx $ do
-            tok <- createToken (Issuer "test")
+            tok <- createClaims (Issuer "test")
                                (TTL 3600)
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
-            tok2 <- createToken (Issuer "test")
+            tok2 <- createClaims (Issuer "test")
                                 (TTL 3600)
                                 (ResourceName "resource-2")
                                 (Username "Savanni")
                                 (Permissions ["read", "write", "grant"])
-            tokList <- listTokens
+            tokList <- listClaims
             pure (tok, tok2, tokList)
         tokList `shouldSatisfy` elem tok
         tokList `shouldSatisfy` elem tok2
@@ -50,18 +50,18 @@ spec = describe "Capability Unit Tests" $ do
     it "can revoke a token" $ do
         ctx <- newContext (secret "ctx")
         (tok, tok2, tokList) <- runCapSpec ctx $ do
-            tok <- createToken (Issuer "test")
+            tok <- createClaims (Issuer "test")
                                (TTL 3600)
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
-            tok2 <- createToken (Issuer "test")
+            tok2 <- createClaims (Issuer "test")
                                 (TTL 3600)
                                 (ResourceName "resource-2")
                                 (Username "Savanni")
                                 (Permissions ["read", "write", "grant"])
-            revokeToken tok
-            tokList <- listTokens
+            revokeClaims tok
+            tokList <- listClaims
             pure (tok, tok2, tokList)
 
         tokList `shouldNotSatisfy` elem tok
@@ -73,7 +73,7 @@ spec = describe "Capability Unit Tests" $ do
         ctx1 <- newContext (secret "ctx1")
         ctx2 <- newContext (secret "ctx2")
         Just unverifiedJWT <- runCapSpec ctx1 $ do
-            token <- createToken (Issuer "test")
+            token <- createClaims (Issuer "test")
                                  (TTL 3600)
                                  (ResourceName "resource-1")
                                  (Username "Savanni")
@@ -85,13 +85,13 @@ spec = describe "Capability Unit Tests" $ do
     it "rejects tokens that are absent from the database" $ do
         ctx <- newContext (secret "ctx")
         (tok, validity) <- runCapSpec ctx $ do
-            tok <- createToken (Issuer "test")
+            tok <- createClaims (Issuer "test")
                                (TTL 3600)
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
             Just unverifiedJWT <- decode <$> encodeToken tok
-            revokeToken tok
+            revokeClaims tok
             validity <- validateToken unverifiedJWT
             pure (tok, validity)
         validity `shouldBe` Nothing
@@ -99,7 +99,7 @@ spec = describe "Capability Unit Tests" $ do
     it "validates present tokens with a valid secret" $ do
         ctx <- newContext (secret "ctx")
         (tok, validity) <- runCapSpec ctx $ do
-            tok <- createToken (Issuer "test")
+            tok <- createClaims (Issuer "test")
                                (TTL 3600)
                                (ResourceName "resource-1")
                                (Username "Savanni")
@@ -112,7 +112,7 @@ spec = describe "Capability Unit Tests" $ do
     it "rejects expired tokens" $ do
         ctx <- newContext (secret "ctx")
         (tok, validity1, validity2) <- runCapSpec ctx $ do
-            tok <- createToken (Issuer "test")
+            tok <- createClaims (Issuer "test")
                                (TTL 1)
                                (ResourceName "resource-1")
                                (Username "Savanni")
@@ -128,7 +128,7 @@ spec = describe "Capability Unit Tests" $ do
     it "authorizes a token with the correct resource and permissions" $ do
         ctx <- newContext (secret "ctx")
         res <- runCapSpec ctx $ do
-            tok <- createToken (Issuer "test")
+            tok <- createClaims (Issuer "test")
                                (TTL 3600)
                                (ResourceName "resource-1")
                                (Username "Savanni")
@@ -142,7 +142,7 @@ spec = describe "Capability Unit Tests" $ do
     it "rejects a token with the incorrect permissions" $ do
         ctx <- newContext (secret "ctx")
         res <- runCapSpec ctx $ do
-            tok <- createToken (Issuer "test")
+            tok <- createClaims (Issuer "test")
                                (TTL 3600)
                                (ResourceName "resource-1")
                                (Username "Savanni")
@@ -156,7 +156,7 @@ spec = describe "Capability Unit Tests" $ do
     it "rejects a token with the incorrect resource name" $ do
         ctx <- newContext (secret "ctx")
         res <- runCapSpec ctx $ do
-            tok <- createToken (Issuer "test")
+            tok <- createClaims (Issuer "test")
                                (TTL 3600)
                                (ResourceName "resource")
                                (Username "Savanni")
