@@ -109,8 +109,6 @@ spec = describe "Capability Unit Tests" $ do
             pure (tok, validity)
         (claims <$> validity) `shouldBe` Just tok
 
-    it "accepts authorization functions" pending
-
     it "rejects expired tokens" $ do
         ctx <- newContext (secret "ctx")
         (tok, validity1, validity2) <- runCapSpec ctx $ do
@@ -126,4 +124,47 @@ spec = describe "Capability Unit Tests" $ do
             pure (tok, validity1, validity2)
         (claims <$> validity1) `shouldBe` Just tok
         validity2 `shouldBe` Nothing
+
+    it "authorizes a token with the correct resource and permissions" $ do
+        ctx <- newContext (secret "ctx")
+        res <- runCapSpec ctx $ do
+            tok <- createToken (Issuer "test")
+                               (TTL 3600)
+                               (ResourceName "resource-1")
+                               (Username "Savanni")
+                               (Permissions ["read", "write", "grant"])
+            let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") tok
+            Just jwt <- validateToken unverifiedJWT
+            pure $ checkAuthorizations (\rn perms -> (rn == ResourceName "resource-1") && (perms `hasPermission` "grant"))
+                                       jwt
+        res `shouldBe` True
+
+    it "rejects a token with the incorrect permissions" $ do
+        ctx <- newContext (secret "ctx")
+        res <- runCapSpec ctx $ do
+            tok <- createToken (Issuer "test")
+                               (TTL 3600)
+                               (ResourceName "resource-1")
+                               (Username "Savanni")
+                               (Permissions ["read"])
+            let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") tok
+            Just jwt <- validateToken unverifiedJWT
+            pure $ checkAuthorizations (\rn perms -> (rn == ResourceName "resource-1") && (perms `hasPermission` "grant"))
+                                       jwt
+        res `shouldBe` False
+
+    it "rejects a token with the incorrect resource name" $ do
+        ctx <- newContext (secret "ctx")
+        res <- runCapSpec ctx $ do
+            tok <- createToken (Issuer "test")
+                               (TTL 3600)
+                               (ResourceName "resource")
+                               (Username "Savanni")
+                               (Permissions ["read, write, grant"])
+            let Just unverifiedJWT = decode $ encodeSigned HS256 (secret "ctx") tok
+            Just jwt <- validateToken unverifiedJWT
+            pure $ checkAuthorizations (\rn perms -> (rn == ResourceName "resource-1") && (perms `hasPermission` "grant"))
+                                       jwt
+        res `shouldBe` False
+
 

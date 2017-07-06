@@ -22,8 +22,9 @@ library
     exposed-modules:    LuminescentDreams.Capabilities
 
     build-depends:        base          >= 4.7      && < 5
-                        , jwt           >= 0.7      && < 0.8
+                        , aeson         >= 1.0.2    && < 1.1
                         , containers    >= 0.5.7    && < 0.6
+                        , jwt           >= 0.7      && < 0.8
                         , mtl           >= 2.2      && < 2.3
                         , random        >= 1.1      && < 1.2
                         , text          >= 1.2      && < 1.3

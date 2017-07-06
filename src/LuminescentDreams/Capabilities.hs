@@ -1,23 +1,25 @@
 {-# LANGUAGE ConstraintKinds        #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE NoImplicitPrelude      #-}
+{-# LANGUAGE OverloadedStrings      #-}
 {-# LANGUAGE TypeSynonymInstances   #-}
 module LuminescentDreams.Capabilities where
 
 import Prelude  ( Bool(..), Either(..), Eq(..)
-                , ($), (.), (<)
+                , ($), (.), (<), (>>=)
                 , fromRational, toRational
-                , undefined
+                , undefined, error, show
                 )
 
 import           Control.Applicative        ((<$>), pure)
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
 import           Control.Monad.Reader       (MonadReader(..))
-import           Data.IORef
+import           Data.Aeson                 (fromJSON, toJSON, Result(..))
+import           Data.IORef                 (IORef, newIORef, modifyIORef, readIORef)
 import qualified Data.List                  as L
 import qualified Data.Map                   as M
 import           Data.Maybe                 (Maybe(..), maybe)
-import           Data.Text
+import           Data.Text                  (Text)
 import           Data.Time                  (UTCTime, NominalDiffTime, addUTCTime, getCurrentTime)
 import           Data.Time.Clock.POSIX      (utcTimeToPOSIXSeconds)
 import           Data.UUID                  (toText)
@@ -26,7 +28,7 @@ import           Web.JWT
 
 {- What is a token store? Is it anything more than a list of currently valid tokens? -}
 
-newtype ResourceName = ResourceName Text
+newtype ResourceName = ResourceName Text deriving Eq
 newtype Permissions = Permissions [Text]
 newtype Issuer = Issuer Text
 newtype TTL = TTL NominalDiffTime
@@ -49,6 +51,7 @@ class HasCapabilityCtx ctx where
 
 type TokenM m r = (MonadIO m, MonadReader r m, HasCapabilityCtx r)
 
+
 validateToken :: TokenM m r => JWT UnverifiedJWT -> m (Maybe (JWT VerifiedJWT))
 validateToken jwt = do
     now <- utcTimeToPOSIXSeconds <$> liftIO getCurrentTime
@@ -67,8 +70,15 @@ validateToken jwt = do
             Nothing -> False
             Just expiration -> expiration < now
 
+
 checkAuthorizations :: (ResourceName -> Permissions -> Bool) -> JWT VerifiedJWT -> Bool
-checkAuthorizations = undefined
+checkAuthorizations fn token = 
+    let claimsSet = claims token
+        rn = ResourceName . stringOrURIToText <$> sub claimsSet
+    in case rn of
+        Nothing -> False
+        Just rn_ -> fn rn_ (permissions $ claimsSet)
+
 
 createToken :: TokenM m r => Issuer -> TTL -> ResourceName -> Username -> Permissions -> m JWTClaimsSet
 createToken (Issuer issuer) (TTL ttl) (ResourceName resourceName) (Username name) (Permissions perms) = do
@@ -82,7 +92,7 @@ createToken (Issuer issuer) (TTL ttl) (ResourceName resourceName) (Username name
                            , nbf = Nothing
                            , iat = numericDate $ utcTimeToPOSIXSeconds now
                            , jti = stringOrURI $ toText uuid
-                           , unregisteredClaims = M.empty
+                           , unregisteredClaims = M.fromList [("perms", toJSON perms)]
                            }
     liftIO $ modifyIORef store ((:) tok)
     pure tok
@@ -98,4 +108,18 @@ listTokens :: TokenM m r => m [JWTClaimsSet]
 listTokens = do
     (CapabilityCtx _ (TokenStore store)) <- hasCapabilityCtx <$> ask
     liftIO $ readIORef store
+
+hasPermission :: Permissions -> Text -> Bool
+hasPermission (Permissions perms) p = p `L.elem` perms
+
+permissions :: JWTClaimsSet -> Permissions
+permissions claimsSet =
+    case M.lookup "perms" $ unregisteredClaims claimsSet of
+        Nothing -> Permissions []
+        Just claimsPermissions -> case fromJSON claimsPermissions of
+            Error err -> error $ show err
+            Success s -> Permissions s
+
+--         perms = case (maybe (Error maybe (Permissions [])
+--                       Permissions $ ((M.lookup "perms" $ unregisteredClaims claimsSet) >>= fromJSON)
 
