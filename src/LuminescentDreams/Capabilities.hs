@@ -1,4 +1,6 @@
-{-# LANGUAGE ConstraintKinds    #-}
+{-# LANGUAGE ConstraintKinds        #-}
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE TypeSynonymInstances   #-}
 module LuminescentDreams.Capabilities where
 
 import           Control.Monad.IO.Class     (MonadIO)
@@ -16,30 +18,30 @@ newtype Issuer = Issuer Text
 newtype TTL = TTL DiffTime
 newtype Username = Username Text
 
-newtype Token = Token (JWT VerifiedJWT) deriving (Show)
+instance Eq (JWT VerifiedJWT) where
+    j1 == j2 = claims j1 == claims j2
 
-instance Eq Token where
-    (Token j1) == (Token j2) = claims j1 == claims j2
+newtype TokenStore = TokenStore [IORef (JWT VerifiedJWT)]
 
-newtype TokenStore = TokenStore [IORef Token]
+data CapabilityCtx = CapabilityCtx Secret TokenStore
 
-class HasTokenStore ctx where
-    hasTokenStore :: ctx -> TokenStore
+class HasCapabilityCtx ctx where
+    hasCapabilityCtx :: ctx -> CapabilityCtx
 
-type TokenM m r = (MonadIO m, MonadReader r m, HasTokenStore r)
+type TokenM m r = (MonadIO m, MonadReader r m, HasCapabilityCtx r)
 
-validateToken :: TokenM m r => Secret -> JWT UnverifiedJWT -> m (Maybe Token)
+validateToken :: TokenM m r => JWT UnverifiedJWT -> m (Maybe (JWT VerifiedJWT))
 validateToken = undefined
 
-checkAuthorizations :: (ResourceName -> Permissions -> Bool) -> Token -> Bool
+checkAuthorizations :: (ResourceName -> Permissions -> Bool) -> JWT VerifiedJWT -> Bool
 checkAuthorizations = undefined
 
-createToken :: TokenM m r => Issuer -> TTL -> ResourceName -> Username -> Permissions -> m Token
+createToken :: TokenM m r => Issuer -> TTL -> ResourceName -> Username -> Permissions -> m (JWT VerifiedJWT)
 createToken = undefined
 
-revokeToken :: TokenM m r => Token -> m ()
+revokeToken :: TokenM m r => JWT VerifiedJWT -> m ()
 revokeToken = undefined
 
-listTokens :: TokenM m r => m [Token]
+listTokens :: TokenM m r => m [JWT VerifiedJWT]
 listTokens = undefined
 
