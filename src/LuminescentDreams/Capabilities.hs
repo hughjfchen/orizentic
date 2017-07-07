@@ -6,7 +6,7 @@
 module LuminescentDreams.Capabilities where
 
 import Prelude  ( Bool(..), Either(..), Eq(..)
-                , ($), (.), (<)
+                , ($), (.), (<), (>>=)
                 , error, show
                 )
 
@@ -79,15 +79,17 @@ checkAuthorizations fn token =
         Just rn_ -> fn rn_ (permissions $ claimsSet)
 
 
-createClaims :: TokenM m r => Issuer -> TTL -> ResourceName -> Username -> Permissions -> m JWTClaimsSet
-createClaims (Issuer issuer) (TTL ttl) (ResourceName resourceName) (Username name) (Permissions perms) = do
+createClaims :: TokenM m r => Issuer -> (Maybe TTL) -> ResourceName -> Username -> Permissions -> m JWTClaimsSet
+createClaims (Issuer issuer) ttl (ResourceName resourceName) (Username name) (Permissions perms) =
+    let ttl_ = (\(TTL val) -> val) <$> ttl
+    in do
     (CapabilityCtx _ (TokenStore store)) <- hasCapabilityCtx <$> ask
     now <- liftIO getCurrentTime
     uuid <- liftIO randomIO
     let tok = JWTClaimsSet { iss = stringOrURI issuer
                            , sub = stringOrURI resourceName
                            , aud = Left <$> stringOrURI name
-                           , exp = numericDate $ utcTimeToPOSIXSeconds $ addUTCTime ttl now
+                           , exp = (utcTimeToPOSIXSeconds . (`addUTCTime` now) <$> ttl_) >>= numericDate
                            , nbf = Nothing
                            , iat = numericDate $ utcTimeToPOSIXSeconds now
                            , jti = stringOrURI $ toText uuid

@@ -31,12 +31,12 @@ spec = describe "Capability Unit Tests" $ do
         ctx <- newContext (secret "ctx")
         (tok, tok2, tokList) <- runCapSpec ctx $ do
             tok <- createClaims (Issuer "test")
-                               (TTL 3600)
+                               (Just $ TTL 3600)
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
             tok2 <- createClaims (Issuer "test")
-                                (TTL 3600)
+                                (Just $ TTL 3600)
                                 (ResourceName "resource-2")
                                 (Username "Savanni")
                                 (Permissions ["read", "write", "grant"])
@@ -51,12 +51,12 @@ spec = describe "Capability Unit Tests" $ do
         ctx <- newContext (secret "ctx")
         (tok, tok2, tokList) <- runCapSpec ctx $ do
             tok <- createClaims (Issuer "test")
-                               (TTL 3600)
+                               (Just $ TTL 3600)
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
             tok2 <- createClaims (Issuer "test")
-                                (TTL 3600)
+                                (Just $ TTL 3600)
                                 (ResourceName "resource-2")
                                 (Username "Savanni")
                                 (Permissions ["read", "write", "grant"])
@@ -74,7 +74,7 @@ spec = describe "Capability Unit Tests" $ do
         ctx2 <- newContext (secret "ctx2")
         Just unverifiedJWT <- runCapSpec ctx1 $ do
             token <- createClaims (Issuer "test")
-                                 (TTL 3600)
+                                 (Just $ TTL 3600)
                                  (ResourceName "resource-1")
                                  (Username "Savanni")
                                  (Permissions ["read", "write", "grant"])
@@ -86,7 +86,7 @@ spec = describe "Capability Unit Tests" $ do
         ctx <- newContext (secret "ctx")
         (tok, validity) <- runCapSpec ctx $ do
             tok <- createClaims (Issuer "test")
-                               (TTL 3600)
+                               (Just $ TTL 3600)
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
@@ -100,7 +100,7 @@ spec = describe "Capability Unit Tests" $ do
         ctx <- newContext (secret "ctx")
         (tok, validity) <- runCapSpec ctx $ do
             tok <- createClaims (Issuer "test")
-                               (TTL 3600)
+                               (Just $ TTL 3600)
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
@@ -113,7 +113,7 @@ spec = describe "Capability Unit Tests" $ do
         ctx <- newContext (secret "ctx")
         (tok, validity1, validity2) <- runCapSpec ctx $ do
             tok <- createClaims (Issuer "test")
-                               (TTL 1)
+                               (Just $ TTL 1)
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
@@ -125,11 +125,27 @@ spec = describe "Capability Unit Tests" $ do
         (claims <$> validity1) `shouldBe` Just tok
         validity2 `shouldBe` Nothing
 
+    it "accepts tokens that have no expiration" $ do
+        ctx <- newContext (secret "ctx")
+        (tok, validity1, validity2) <- runCapSpec ctx $ do
+            tok <- createClaims (Issuer "test")
+                                Nothing
+                                (ResourceName "resource-1")
+                                (Username "Savanni")
+                                (Permissions ["read", "write", "grant"])
+            Just unverifiedJWT <- decode <$> encodeToken tok
+            validity1 <- validateToken unverifiedJWT
+            liftIO $ threadDelay 2000000
+            validity2 <- validateToken unverifiedJWT
+            pure (tok, validity1, validity2)
+        (claims <$> validity1) `shouldBe` Just tok
+        (claims <$> validity2) `shouldBe` Just tok
+
     it "authorizes a token with the correct resource and permissions" $ do
         ctx <- newContext (secret "ctx")
         res <- runCapSpec ctx $ do
             tok <- createClaims (Issuer "test")
-                               (TTL 3600)
+                               (Just $ TTL 3600)
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
@@ -143,7 +159,7 @@ spec = describe "Capability Unit Tests" $ do
         ctx <- newContext (secret "ctx")
         res <- runCapSpec ctx $ do
             tok <- createClaims (Issuer "test")
-                               (TTL 3600)
+                               (Just $ TTL 3600)
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read"])
@@ -157,7 +173,7 @@ spec = describe "Capability Unit Tests" $ do
         ctx <- newContext (secret "ctx")
         res <- runCapSpec ctx $ do
             tok <- createClaims (Issuer "test")
-                               (TTL 3600)
+                               (Just $ TTL 3600)
                                (ResourceName "resource")
                                (Username "Savanni")
                                (Permissions ["read, write, grant"])
@@ -166,5 +182,4 @@ spec = describe "Capability Unit Tests" $ do
             pure $ checkAuthorizations (\rn perms -> (rn == ResourceName "resource-1") && (perms `hasPermission` "grant"))
                                        jwt
         res `shouldBe` False
-
 
