@@ -3,20 +3,19 @@
 {-# LANGUAGE NoImplicitPrelude      #-}
 {-# LANGUAGE OverloadedStrings      #-}
 {-# LANGUAGE TypeSynonymInstances   #-}
+{-# OPTIONS_GHC -fno-warn-orphans   #-}
 module LuminescentDreams.Capabilities where
 
-import Prelude  ( Bool(..), Either(..), Eq(..), FilePath, Show(..)
+import Prelude  ( Bool(..), Either(..), Eq(..), Show(..)
                 , ($), (.), (<), (>>=)
                 , filter, fmap, id
-                , error, undefined
+                , error
                 )
 
 import           Control.Applicative        ((<$>), pure)
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
-import           Control.Monad.Reader       (MonadReader(..), runReaderT)
-import           Data.Aeson                 (FromJSON(..), ToJSON(..), Result(..), (.=), (.:), eitherDecode, encode, fromJSON, object)
-import           Data.ByteString            (readFile, writeFile)
-import           Data.ByteString.Lazy       (fromStrict, toStrict)
+import           Control.Monad.Reader       (MonadReader(..))
+import           Data.Aeson                 (ToJSON(..), Result(..), fromJSON)
 import           Data.IORef                 (IORef, newIORef, modifyIORef, readIORef, writeIORef)
 import qualified Data.List                  as L
 import qualified Data.Map                   as M
@@ -24,7 +23,7 @@ import           Data.Maybe                 (Maybe(..))
 import           Data.Text                  (Text)
 import           Data.Time                  (NominalDiffTime, addUTCTime, getCurrentTime)
 import           Data.Time.Clock.POSIX      (utcTimeToPOSIXSeconds)
-import           Data.UUID                  (UUID, fromText, toText)
+import           Data.UUID                  (toText)
 import           System.Random              (randomIO)
 import           Web.JWT
 

@@ -13,7 +13,6 @@ import           Data.ByteString            (readFile, writeFile)
 import           Data.ByteString.Lazy       (fromStrict, toStrict)
 import           Data.Monoid
 import           Data.Text
-import           Data.Time
 import           Options.Applicative
 import           System.IO.Error            (isDoesNotExistError)
 import           Web.JWT
@@ -61,7 +60,7 @@ main = do
 
     claimsLst <- loadDB path
     case claimsLst of
-        Left err -> undefined
+        Left err -> error $ show err
         Right claims_ -> do
             ctx <- newCapabilityContext (secret "") claims_
             case cmd of
@@ -69,7 +68,7 @@ main = do
                     runCapM ctx $ listClaims >>= \t -> forM_ t (liftIO . print)
                 CreateToken issuer ttl resourceName userName perms -> do
                     runCapM ctx $ do
-                        createClaims issuer ttl resourceName userName perms
+                        _ <- createClaims issuer ttl resourceName userName perms
                         listClaims >>= \c -> liftIO $ saveDB c path
                 RevokeToken uuid -> do
                     runCapM ctx $ do
