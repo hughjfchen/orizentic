@@ -64,19 +64,16 @@ main = do
         Right claims_ -> do
             ctx <- newCapabilityContext (secret "") claims_
             case cmd of
-                ListTokens -> do
-                    runCapM ctx $ listClaims >>= \t -> forM_ t (liftIO . print)
-                CreateToken issuer ttl resourceName userName perms -> do
-                    runCapM ctx $ do
-                        _ <- createClaims issuer ttl resourceName userName perms
-                        listClaims >>= \c -> liftIO $ saveDB c path
-                RevokeToken uuid -> do
-                    runCapM ctx $ do
-                        revokeByUUID uuid
-                        listClaims >>= \c -> liftIO $ saveDB c path
+                ListTokens -> runCapM ctx $ listClaims >>= \t -> forM_ t (liftIO . print)
+                CreateToken issuer ttl resourceName userName perms -> runCapM ctx $ do
+                    _ <- createClaims issuer ttl resourceName userName perms
+                    listClaims >>= \c -> liftIO $ saveDB c path
+                RevokeToken uuid -> runCapM ctx $ do
+                    revokeByUUID uuid
+                    listClaims >>= \c -> liftIO $ saveDB c path
 
 loadDB :: FilePath -> IO (Either String [JWTClaimsSet])
-loadDB path = do
+loadDB path =
     catch ((eitherDecode . fromStrict) <$> readFile path)
           (\e -> if isDoesNotExistError e
                     then pure $ Right []

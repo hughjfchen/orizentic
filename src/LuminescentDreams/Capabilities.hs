@@ -97,10 +97,10 @@ checkAuthorizations fn token =
         rn = ResourceName . stringOrURIToText <$> sub claimsSet
     in case rn of
         Nothing -> False
-        Just rn_ -> fn rn_ (permissions $ claimsSet)
+        Just rn_ -> fn rn_ (permissions claimsSet)
 
 
-createClaims :: TokenM m r => Issuer -> (Maybe TTL) -> ResourceName -> Username -> Permissions -> m JWTClaimsSet
+createClaims :: TokenM m r => Issuer -> Maybe TTL -> ResourceName -> Username -> Permissions -> m JWTClaimsSet
 createClaims (Issuer issuer) ttl (ResourceName resourceName) (Username name) (Permissions perms) =
     let ttl_ = (\(TTL val) -> val) <$> ttl
     in do
