@@ -5,33 +5,36 @@
 {-# LANGUAGE TypeSynonymInstances   #-}
 module LuminescentDreams.Capabilities where
 
-import Prelude  ( Bool(..), Either(..), Eq(..)
+import Prelude  ( Bool(..), Either(..), Eq(..), FilePath, Show(..)
                 , ($), (.), (<), (>>=)
-                , error, show
+                , filter, fmap, id
+                , error, undefined
                 )
 
 import           Control.Applicative        ((<$>), pure)
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
-import           Control.Monad.Reader       (MonadReader(..))
-import           Data.Aeson                 (fromJSON, toJSON, Result(..))
-import           Data.IORef                 (IORef, newIORef, modifyIORef, readIORef)
+import           Control.Monad.Reader       (MonadReader(..), runReaderT)
+import           Data.Aeson                 (FromJSON(..), ToJSON(..), Result(..), (.=), (.:), eitherDecode, encode, fromJSON, object)
+import           Data.ByteString            (readFile, writeFile)
+import           Data.ByteString.Lazy       (fromStrict, toStrict)
+import           Data.IORef                 (IORef, newIORef, modifyIORef, readIORef, writeIORef)
 import qualified Data.List                  as L
 import qualified Data.Map                   as M
 import           Data.Maybe                 (Maybe(..))
 import           Data.Text                  (Text)
 import           Data.Time                  (NominalDiffTime, addUTCTime, getCurrentTime)
 import           Data.Time.Clock.POSIX      (utcTimeToPOSIXSeconds)
-import           Data.UUID                  (toText)
+import           Data.UUID                  (UUID, fromText, toText)
 import           System.Random              (randomIO)
 import           Web.JWT
 
 {- What is a token store? Is it anything more than a list of currently valid tokens? -}
 
-newtype ResourceName = ResourceName Text deriving Eq
-newtype Permissions = Permissions [Text]
-newtype Issuer = Issuer Text
-newtype TTL = TTL NominalDiffTime
-newtype Username = Username Text
+newtype ResourceName = ResourceName Text deriving (Eq, Show)
+newtype Permissions = Permissions [Text] deriving Show
+newtype Issuer = Issuer Text deriving Show
+newtype TTL = TTL NominalDiffTime deriving Show
+newtype Username = Username Text deriving Show
 
 instance Eq (JWT VerifiedJWT) where
     j1 == j2 = claims j1 == claims j2
@@ -40,10 +43,30 @@ newtype TokenStore = TokenStore (IORef [JWTClaimsSet])
 
 data CapabilityCtx = CapabilityCtx Secret TokenStore
 
+data CapDb = CapDb [JWTClaimsSet]
+
+instance ToJSON CapDb where
+    toJSON (CapDb claims) = toJSON claims
+
+instance FromJSON CapDb where
+    parseJSON lst = CapDb <$> parseJSON lst
+
+
+instance HasCapabilityCtx CapabilityCtx where
+    hasCapabilityCtx = id
+
 newCapabilityContext :: MonadIO m => Secret -> m CapabilityCtx
 newCapabilityContext s = do
     st <- liftIO $ TokenStore <$> newIORef []
     pure $ CapabilityCtx s st
+
+
+initializeCapabilityDB :: MonadIO m => FilePath -> Secret -> m CapabilityCtx
+initializeCapabilityDB path secret = do
+    ctx <- newCapabilityContext secret
+    runReaderT (saveDB path) ctx
+    pure ctx
+
 
 class HasCapabilityCtx ctx where
     hasCapabilityCtx :: ctx -> CapabilityCtx
@@ -106,10 +129,35 @@ revokeClaims tok = do
     pure ()
 
 
+revokeByUUID :: TokenM m r => Text -> m ()
+revokeByUUID uuid = do
+    (CapabilityCtx _ (TokenStore store)) <- hasCapabilityCtx <$> ask
+    liftIO $ modifyIORef store (filter (\c -> getUUID c /= Just uuid))
+    where
+    getUUID = fmap stringOrURIToText . jti
+    
+
+
 listClaims :: TokenM m r => m [JWTClaimsSet]
 listClaims = do
     (CapabilityCtx _ (TokenStore store)) <- hasCapabilityCtx <$> ask
     liftIO $ readIORef store
+
+
+saveDB :: TokenM m r => FilePath -> m ()
+saveDB path = do
+    (CapabilityCtx s _) <- hasCapabilityCtx <$> ask
+    claims <- listClaims
+    liftIO $ writeFile path $ toStrict $ encode $ CapDb claims
+
+
+reloadDB :: TokenM m r => FilePath -> m ()
+reloadDB path = do
+    (CapabilityCtx s (TokenStore store)) <- hasCapabilityCtx <$> ask
+    db <- (eitherDecode . fromStrict) <$> (liftIO $ readFile path)
+    case db of
+        Left err -> undefined
+        Right (CapDb claims) -> liftIO $ writeIORef store claims
 
 
 encodeToken :: TokenM m r => JWTClaimsSet -> m Text
