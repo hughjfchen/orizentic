@@ -22,8 +22,9 @@ import           LuminescentDreams.Capabilities
 
 data Config = Config FilePath Command deriving Show
 data Command = ListTokens
-             | CreateToken Issuer (Maybe TTL) ResourceName Username Permissions
+             | CreateToken Secret Issuer (Maybe TTL) ResourceName Username Permissions
              | RevokeToken Text
+             | EncodeToken Secret Text
              deriving Show
 
 
@@ -32,7 +33,8 @@ cliParser = Config <$> strOption (long "db" <> help "Path to the capabilities da
                    <*> subparser (
                             command "list" (info (pure ListTokens) (progDesc "list tokens"))
                         <>  command "create" (info parseCreateToken (progDesc "create a token"))
-                        <>  command "revoke" (info parseRevokeToken (progDesc "revoke a token")))
+                        <>  command "revoke" (info parseRevokeToken (progDesc "revoke a token"))
+                        <>  command "encode" (info parseEncodeToken (progDesc "encode a token with a secret")))
 
 parseRevokeToken :: Parser Command
 parseRevokeToken =
@@ -40,12 +42,17 @@ parseRevokeToken =
 
 parseCreateToken :: Parser Command
 parseCreateToken =
-    CreateToken <$> (Issuer . pack <$> strOption (long "issuer" <> help "Token issuer (typically the owner)"))
+    CreateToken <$> (secret . pack <$> strOption (long "secret" <> help "The secret to use for encoding the token"))
+                <*> (Issuer . pack <$> strOption (long "issuer" <> help "Token issuer (typically the owner)"))
                 <*> optional (TTL . fromRational <$> option auto (long "ttl" <> help "Seconds until the token expires"))
                 <*> (ResourceName . pack <$> strOption (long "resource" <> help "Name of the resource"))
                 <*> (Username . pack <$> strOption (long "name" <> help "Name of the user"))
                 <*> (Permissions . splitOn "," . pack <$> strOption (long "perms" <> help "Permissions"))
 
+parseEncodeToken :: Parser Command
+parseEncodeToken =
+    EncodeToken <$> (secret . pack <$> strOption (long "secret" <> help "The secret to use for encoding the token"))
+                <*> (pack <$> strOption (long "id" <> help "Token ID"))
 
 newtype CapM a = CapM (ReaderT CapabilityCtx IO a)
     deriving (Functor, Applicative, Monad, MonadIO, MonadReader CapabilityCtx)
@@ -65,12 +72,18 @@ main = do
             ctx <- newCapabilityContext (secret "") claims_
             case cmd of
                 ListTokens -> runCapM ctx $ listClaims >>= \t -> forM_ t (liftIO . print)
-                CreateToken issuer ttl resourceName userName perms -> runCapM ctx $ do
-                    _ <- createClaims issuer ttl resourceName userName perms
+                CreateToken s issuer ttl resourceName userName perms -> runCapM ctx $ do
+                    claim <- createClaims issuer ttl resourceName userName perms
                     listClaims >>= \c -> liftIO $ saveDB c path
+                    liftIO $ print $ encodeSigned HS256 s claim
                 RevokeToken uuid -> runCapM ctx $ do
                     revokeByUUID uuid
                     listClaims >>= \c -> liftIO $ saveDB c path
+                EncodeToken s uuid -> runCapM ctx $ do
+                    claim <- findClaim uuid
+                    case claim of
+                        Nothing -> error "claim not found"
+                        Just claim_ -> liftIO $ print $ encodeSigned HS256 s claim_
 
 loadDB :: FilePath -> IO (Either String [JWTClaimsSet])
 loadDB path =

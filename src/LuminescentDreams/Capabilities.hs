@@ -19,7 +19,7 @@ import           Data.Aeson                 (ToJSON(..), Result(..), fromJSON)
 import           Data.IORef                 (IORef, newIORef, modifyIORef, readIORef, writeIORef)
 import qualified Data.List                  as L
 import qualified Data.Map                   as M
-import           Data.Maybe                 (Maybe(..))
+import           Data.Maybe                 (Maybe(..), listToMaybe)
 import           Data.Text                  (Text)
 import           Data.Time                  (NominalDiffTime, addUTCTime, getCurrentTime)
 import           Data.Time.Clock.POSIX      (utcTimeToPOSIXSeconds)
@@ -146,6 +146,13 @@ listClaims = do
     (CapabilityCtx _ (TokenStore store)) <- hasCapabilityCtx <$> ask
     liftIO $ readIORef store
 
+
+findClaim :: TokenM m r => Text -> m (Maybe JWTClaimsSet)
+findClaim uuid = do
+    lst <- listClaims
+    pure $ listToMaybe $ filter (\c -> getUUID c == Just uuid) lst
+    where
+    getUUID = fmap stringOrURIToText . jti
 
 -- saveDB :: TokenM m r => FilePath -> m ()
 -- saveDB path = do
