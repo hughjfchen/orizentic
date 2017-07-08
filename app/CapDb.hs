@@ -2,13 +2,20 @@
 {-# LANGUAGE OverloadedStrings          #-}
 module Main where
 
+import Prelude hiding (readFile, writeFile)
+
+import           Control.Exception
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Reader
+import           Data.Aeson                 (eitherDecode, encode)
+import           Data.ByteString            (readFile, writeFile)
+import           Data.ByteString.Lazy       (fromStrict, toStrict)
 import           Data.Monoid
 import           Data.Text
 import           Data.Time
 import           Options.Applicative
+import           System.IO.Error            (isDoesNotExistError)
 import           Web.JWT
 
 import           LuminescentDreams.Capabilities
@@ -18,7 +25,6 @@ data Config = Config FilePath Command deriving Show
 data Command = ListTokens
              | CreateToken Issuer (Maybe TTL) ResourceName Username Permissions
              | RevokeToken Text
-             | InitializeDB
              deriving Show
 
 
@@ -27,8 +33,7 @@ cliParser = Config <$> strOption (long "db" <> help "Path to the capabilities da
                    <*> subparser (
                             command "list" (info (pure ListTokens) (progDesc "list tokens"))
                         <>  command "create" (info parseCreateToken (progDesc "create a token"))
-                        <>  command "revoke" (info parseRevokeToken (progDesc "revoke a token"))
-                        <>  command "initialize" (info (pure InitializeDB) (progDesc "initialize a database")))
+                        <>  command "revoke" (info parseRevokeToken (progDesc "revoke a token")))
 
 parseRevokeToken :: Parser Command
 parseRevokeToken =
@@ -42,10 +47,6 @@ parseCreateToken =
                 <*> (Username . pack <$> strOption (long "name" <> help "Name of the user"))
                 <*> (Permissions . splitOn "," . pack <$> strOption (long "perms" <> help "Permissions"))
 
--- parseInitializeDB :: Parser Command
--- parseInitializeDB =
---     InitializeDB <$> (secret . pack <$> strOption (long "secret" <> help "The shared secret for this db"))
-
 
 newtype CapM a = CapM (ReaderT CapabilityCtx IO a)
     deriving (Functor, Applicative, Monad, MonadIO, MonadReader CapabilityCtx)
@@ -57,26 +58,31 @@ main :: IO ()
 main = do
     (Config path cmd) <- execParser (info (helper <*> cliParser)
                                     (fullDesc <> progDesc "description of the program"))
-    
-    case cmd of
-        ListTokens -> do
-            ctx <- newCapabilityContext (secret "")
-            runCapM ctx $ do
-                reloadDB path
-                tokens <- listClaims
-                forM_ tokens (liftIO . print)
-        CreateToken issuer ttl resourceName userName perms -> do
-            ctx <- newCapabilityContext (secret "")
-            runCapM ctx $ do
-                reloadDB path
-                createClaims issuer ttl resourceName userName perms
-                saveDB path
-        RevokeToken uuid -> do
-            ctx <- newCapabilityContext (secret "")
-            runCapM ctx $ do
-                reloadDB path
-                revokeByUUID uuid
-                saveDB path
-        InitializeDB -> void $ initializeCapabilityDB path (secret "")
 
+    claimsLst <- loadDB path
+    case claimsLst of
+        Left err -> undefined
+        Right claims_ -> do
+            ctx <- newCapabilityContext (secret "") claims_
+            case cmd of
+                ListTokens -> do
+                    runCapM ctx $ listClaims >>= \t -> forM_ t (liftIO . print)
+                CreateToken issuer ttl resourceName userName perms -> do
+                    runCapM ctx $ do
+                        createClaims issuer ttl resourceName userName perms
+                        listClaims >>= \c -> liftIO $ saveDB c path
+                RevokeToken uuid -> do
+                    runCapM ctx $ do
+                        revokeByUUID uuid
+                        listClaims >>= \c -> liftIO $ saveDB c path
+
+loadDB :: FilePath -> IO (Either String [JWTClaimsSet])
+loadDB path = do
+    catch ((eitherDecode . fromStrict) <$> readFile path)
+          (\e -> if isDoesNotExistError e
+                    then pure $ Right []
+                    else throw e)
+
+saveDB :: [JWTClaimsSet] -> FilePath -> IO ()
+saveDB claimsLst path = writeFile path (toStrict $ encode claimsLst)
 

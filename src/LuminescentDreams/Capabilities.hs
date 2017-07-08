@@ -43,33 +43,32 @@ newtype TokenStore = TokenStore (IORef [JWTClaimsSet])
 
 data CapabilityCtx = CapabilityCtx Secret TokenStore
 
-data CapDb = CapDb [JWTClaimsSet]
+-- data CapDb = CapDb [JWTClaimsSet]
+-- 
+-- instance ToJSON CapDb where
+--     toJSON (CapDb claims) = toJSON claims
+-- 
+-- instance FromJSON CapDb where
+--     parseJSON lst = CapDb <$> parseJSON lst
 
-instance ToJSON CapDb where
-    toJSON (CapDb claims) = toJSON claims
-
-instance FromJSON CapDb where
-    parseJSON lst = CapDb <$> parseJSON lst
-
+class HasCapabilityCtx ctx where
+    hasCapabilityCtx :: ctx -> CapabilityCtx
 
 instance HasCapabilityCtx CapabilityCtx where
     hasCapabilityCtx = id
 
-newCapabilityContext :: MonadIO m => Secret -> m CapabilityCtx
-newCapabilityContext s = do
-    st <- liftIO $ TokenStore <$> newIORef []
+newCapabilityContext :: MonadIO m => Secret -> [JWTClaimsSet] -> m CapabilityCtx
+newCapabilityContext s initialClaims = do
+    st <- liftIO $ TokenStore <$> newIORef initialClaims
     pure $ CapabilityCtx s st
 
 
-initializeCapabilityDB :: MonadIO m => FilePath -> Secret -> m CapabilityCtx
-initializeCapabilityDB path secret = do
-    ctx <- newCapabilityContext secret
-    runReaderT (saveDB path) ctx
-    pure ctx
+-- initializeCapabilityDB :: MonadIO m => FilePath -> Secret -> m CapabilityCtx
+-- initializeCapabilityDB path secret = do
+--     ctx <- newCapabilityContext secret
+--     runReaderT (saveDB path) ctx
+--     pure ctx
 
-
-class HasCapabilityCtx ctx where
-    hasCapabilityCtx :: ctx -> CapabilityCtx
 
 type TokenM m r = (MonadIO m, MonadReader r m, HasCapabilityCtx r)
 
@@ -137,6 +136,11 @@ revokeByUUID uuid = do
     getUUID = fmap stringOrURIToText . jti
     
 
+replaceClaims :: TokenM m r => [JWTClaimsSet] -> m ()
+replaceClaims newClaims = do
+    (CapabilityCtx _ (TokenStore store)) <- hasCapabilityCtx <$> ask
+    liftIO $ writeIORef store newClaims
+
 
 listClaims :: TokenM m r => m [JWTClaimsSet]
 listClaims = do
@@ -144,20 +148,20 @@ listClaims = do
     liftIO $ readIORef store
 
 
-saveDB :: TokenM m r => FilePath -> m ()
-saveDB path = do
-    (CapabilityCtx s _) <- hasCapabilityCtx <$> ask
-    claims <- listClaims
-    liftIO $ writeFile path $ toStrict $ encode $ CapDb claims
-
-
-reloadDB :: TokenM m r => FilePath -> m ()
-reloadDB path = do
-    (CapabilityCtx s (TokenStore store)) <- hasCapabilityCtx <$> ask
-    db <- (eitherDecode . fromStrict) <$> (liftIO $ readFile path)
-    case db of
-        Left err -> undefined
-        Right (CapDb claims) -> liftIO $ writeIORef store claims
+-- saveDB :: TokenM m r => FilePath -> m ()
+-- saveDB path = do
+--     (CapabilityCtx s _) <- hasCapabilityCtx <$> ask
+--     claims <- listClaims
+--     liftIO $ writeFile path $ toStrict $ encode $ CapDb claims
+-- 
+-- 
+-- reloadDB :: TokenM m r => FilePath -> m ()
+-- reloadDB path = do
+--     (CapabilityCtx s (TokenStore store)) <- hasCapabilityCtx <$> ask
+--     db <- (eitherDecode . fromStrict) <$> (liftIO $ readFile path)
+--     case db of
+--         Left err -> undefined
+--         Right (CapDb claims) -> liftIO $ writeIORef store claims
 
 
 encodeToken :: TokenM m r => JWTClaimsSet -> m Text

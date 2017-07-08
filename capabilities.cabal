@@ -49,6 +49,7 @@ executable capdb
     build-depends:        base
                         , capabilities
                         , aeson
+                        , bytestring            >= 0.10     && < 0.11
                         , jwt
                         , mtl
                         , optparse-applicative  >= 0.13     && < 0.14

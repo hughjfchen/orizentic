@@ -17,7 +17,7 @@ instance HasCapabilityCtx Context where
     hasCapabilityCtx (Context c) = c
 
 newContext :: Secret -> IO Context
-newContext secret = Context <$> newCapabilityContext secret
+newContext secret = Context <$> newCapabilityContext secret []
 
 newtype CapSpecM a = CapSpecM (ReaderT Context IO a)
     deriving (Functor, Applicative, Monad, MonadIO, MonadReader Context)
