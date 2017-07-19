@@ -1,8 +1,8 @@
-name:                capabilities
+name:                orizentic
 version:             0.1.0.0
 -- synopsis:
 -- description:
-homepage:            https://github.com/luminescent-dreams/capabilities#readme
+homepage:            https://github.com/luminescent-dreams/orizentic#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Savanni D'Gerinel
@@ -42,12 +42,12 @@ library
     default-language:   Haskell2010
 
 
-executable capdb
+executable orizentic
     hs-source-dirs:     app
-    main-is:            CapDb.hs
+    main-is:            Orizentic.hs
 
     build-depends:        base
-                        , capabilities
+                        , orizentic
                         , aeson
                         , bytestring            >= 0.10     && < 0.11
                         , jwt
@@ -62,7 +62,7 @@ executable capdb
         ghc-options:    -Wall -threaded -rtsopts -with-rtsopts=-N -O2 -Werror
 
 
-test-suite capabilities-test
+test-suite orizentic-test
     type:               exitcode-stdio-1.0
     hs-source-dirs:     test
     main-is:            Spec.hs
@@ -70,7 +70,7 @@ test-suite capabilities-test
     other-modules:      UnitSpec
 
     build-depends:        base
-                        , capabilities
+                        , orizentic
                         , hspec
                         , jwt
                         , mtl
@@ -81,5 +81,5 @@ test-suite capabilities-test
 
 source-repository head
     type:     git
-    location: https://github.com/luminescent-dreams/capabilities
+    location: https://github.com/luminescent-dreams/orizentic
 
