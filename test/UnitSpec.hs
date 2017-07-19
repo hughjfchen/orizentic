@@ -8,16 +8,16 @@ import           Control.Monad.Reader   (MonadReader(..), ReaderT(..))
 import           Test.Hspec
 import           Web.JWT
 
-import           LuminescentDreams.Capabilities
+import           LuminescentDreams.Orizentic
 
 
-newtype Context = Context CapabilityCtx
+newtype Context = Context OrizenticCtx
 
-instance HasCapabilityCtx Context where
-    hasCapabilityCtx (Context c) = c
+instance HasOrizenticCtx Context where
+    hasOrizenticCtx (Context c) = c
 
 newContext :: Secret -> IO Context
-newContext secret = Context <$> newCapabilityContext secret []
+newContext secret = Context <$> newOrizenticCtx secret []
 
 newtype CapSpecM a = CapSpecM (ReaderT Context IO a)
     deriving (Functor, Applicative, Monad, MonadIO, MonadReader Context)
@@ -26,7 +26,7 @@ runCapSpec :: Context -> CapSpecM a -> IO a
 runCapSpec ctx (CapSpecM act) = runReaderT act ctx
 
 spec :: Spec
-spec = describe "Capability Unit Tests" $ do
+spec = describe "Orizentic Unit Tests" $ do
     it "can create a new token" $ do
         ctx <- newContext (secret "ctx")
         (tok, tok2, tokList) <- runCapSpec ctx $ do
@@ -78,7 +78,7 @@ spec = describe "Capability Unit Tests" $ do
                                  (ResourceName "resource-1")
                                  (Username "Savanni")
                                  (Permissions ["read", "write", "grant"])
-            decode <$> encodeToken token
+            decode <$> encodeClaims token
         res <- runCapSpec ctx2 $ validateToken unverifiedJWT
         res `shouldBe` Nothing
 
@@ -90,7 +90,7 @@ spec = describe "Capability Unit Tests" $ do
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
-            Just unverifiedJWT <- decode <$> encodeToken tok
+            Just unverifiedJWT <- decode <$> encodeClaims tok
             revokeClaims tok
             validity <- validateToken unverifiedJWT
             pure (tok, validity)
@@ -104,7 +104,7 @@ spec = describe "Capability Unit Tests" $ do
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
-            Just unverifiedJWT <- decode <$> encodeToken tok
+            Just unverifiedJWT <- decode <$> encodeClaims tok
             validity <- validateToken unverifiedJWT
             pure (tok, validity)
         (claims <$> validity) `shouldBe` Just tok
@@ -117,7 +117,7 @@ spec = describe "Capability Unit Tests" $ do
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
-            Just unverifiedJWT <- decode <$> encodeToken tok
+            Just unverifiedJWT <- decode <$> encodeClaims tok
             validity1 <- validateToken unverifiedJWT
             liftIO $ threadDelay 2000000
             validity2 <- validateToken unverifiedJWT
@@ -133,7 +133,7 @@ spec = describe "Capability Unit Tests" $ do
                                 (ResourceName "resource-1")
                                 (Username "Savanni")
                                 (Permissions ["read", "write", "grant"])
-            Just unverifiedJWT <- decode <$> encodeToken tok
+            Just unverifiedJWT <- decode <$> encodeClaims tok
             validity1 <- validateToken unverifiedJWT
             liftIO $ threadDelay 2000000
             validity2 <- validateToken unverifiedJWT
@@ -149,7 +149,7 @@ spec = describe "Capability Unit Tests" $ do
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read", "write", "grant"])
-            Just unverifiedJWT <- decode <$> encodeToken tok
+            Just unverifiedJWT <- decode <$> encodeClaims tok
             Just jwt <- validateToken unverifiedJWT
             pure $ checkAuthorizations (\rn perms -> (rn == ResourceName "resource-1") && (perms `hasPermission` "grant"))
                                        jwt
@@ -163,7 +163,7 @@ spec = describe "Capability Unit Tests" $ do
                                (ResourceName "resource-1")
                                (Username "Savanni")
                                (Permissions ["read"])
-            Just unverifiedJWT <- decode <$> encodeToken tok
+            Just unverifiedJWT <- decode <$> encodeClaims tok
             Just jwt <- validateToken unverifiedJWT
             pure $ checkAuthorizations (\rn perms -> (rn == ResourceName "resource-1") && (perms `hasPermission` "grant"))
                                        jwt
@@ -177,7 +177,7 @@ spec = describe "Capability Unit Tests" $ do
                                (ResourceName "resource")
                                (Username "Savanni")
                                (Permissions ["read, write, grant"])
-            Just unverifiedJWT <- decode <$> encodeToken tok
+            Just unverifiedJWT <- decode <$> encodeClaims tok
             Just jwt <- validateToken unverifiedJWT
             pure $ checkAuthorizations (\rn perms -> (rn == ResourceName "resource-1") && (perms `hasPermission` "grant"))
                                        jwt

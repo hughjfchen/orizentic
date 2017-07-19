@@ -39,6 +39,13 @@ ctx <- newOrizenticCtx ("JWT secret" :: Web.JWT.Secret) []
 
 Your application monad will need to implement the `HasOrizenticCtx` type class, or you will need to call all of the orizentic functions with a reader monad.
 
+```
+data AppContext -- Your application context here
+
+instance HasOrizenticCtx AppContext where
+    hasOrizenticCtx = ...
+```
+
 A typical authentication/verification function will look like this:
 
 ```

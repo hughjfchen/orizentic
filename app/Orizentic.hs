@@ -17,7 +17,7 @@ import           Options.Applicative
 import           System.IO.Error            (isDoesNotExistError)
 import           Web.JWT
 
-import           LuminescentDreams.Capabilities
+import           LuminescentDreams.Orizentic
 
 
 data Config = Config FilePath Command deriving Show
@@ -54,10 +54,10 @@ parseEncodeToken =
     EncodeToken <$> (secret . pack <$> strOption (long "secret" <> help "The secret to use for encoding the token"))
                 <*> (pack <$> strOption (long "id" <> help "Token ID"))
 
-newtype CapM a = CapM (ReaderT CapabilityCtx IO a)
-    deriving (Functor, Applicative, Monad, MonadIO, MonadReader CapabilityCtx)
+newtype CapM a = CapM (ReaderT OrizenticCtx IO a)
+    deriving (Functor, Applicative, Monad, MonadIO, MonadReader OrizenticCtx)
 
-runCapM :: CapabilityCtx -> CapM a -> IO a
+runCapM :: OrizenticCtx -> CapM a -> IO a
 runCapM ctx (CapM act) = runReaderT act ctx
 
 main :: IO ()
@@ -69,7 +69,7 @@ main = do
     case claimsLst of
         Left err -> error $ show err
         Right claims_ -> do
-            ctx <- newCapabilityContext (secret "") claims_
+            ctx <- newOrizenticCtx (secret "") claims_
             case cmd of
                 ListTokens -> runCapM ctx $ listClaims >>= \t -> forM_ t (liftIO . print)
                 CreateToken s issuer ttl resourceName userName perms -> runCapM ctx $ do
@@ -80,7 +80,7 @@ main = do
                     revokeByUUID uuid
                     listClaims >>= \c -> liftIO $ saveDB c path
                 EncodeToken s uuid -> runCapM ctx $ do
-                    claim <- findClaim uuid
+                    claim <- findClaims uuid
                     case claim of
                         Nothing -> error "claim not found"
                         Just claim_ -> liftIO $ print $ encodeSigned HS256 s claim_

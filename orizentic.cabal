@@ -10,7 +10,7 @@ maintainer:          example@example.com
 copyright:           2017 Savanni D'Gerinel
 category:            Authentication
 build-type:          Simple
-extra-source-files:  README.md
+extra-source-files:  readme.md
 cabal-version:       >=1.10
 
 
@@ -21,7 +21,7 @@ flag dev
 
 
 library
-    exposed-modules:    LuminescentDreams.Capabilities
+    exposed-modules:    LuminescentDreams.Orizentic
 
     build-depends:        base          >= 4.7      && < 5
                         , aeson         >= 1.0.2    && < 1.1
