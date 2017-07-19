@@ -4,7 +4,7 @@
 {-# LANGUAGE OverloadedStrings      #-}
 {-# LANGUAGE TypeSynonymInstances   #-}
 {-# OPTIONS_GHC -fno-warn-orphans   #-}
-module LuminescentDreams.Capabilities where
+module LuminescentDreams.Orizentic where
 
 import Prelude  ( Bool(..), Either(..), Eq(..), Show(..)
                 , ($), (.), (<), (>>=)
@@ -56,10 +56,10 @@ class HasCapabilityCtx ctx where
 instance HasCapabilityCtx CapabilityCtx where
     hasCapabilityCtx = id
 
-newCapabilityContext :: MonadIO m => Secret -> [JWTClaimsSet] -> m CapabilityCtx
-newCapabilityContext s initialClaims = do
+newOrizenticCtx :: MonadIO m => Secret -> [JWTClaimsSet] -> m OrizenticCtx
+newOrizenticCtx s initialClaims = do
     st <- liftIO $ TokenStore <$> newIORef initialClaims
-    pure $ CapabilityCtx s st
+    pure $ OrizenticCtx s st
 
 
 -- initializeCapabilityDB :: MonadIO m => FilePath -> Secret -> m CapabilityCtx
@@ -69,13 +69,13 @@ newCapabilityContext s initialClaims = do
 --     pure ctx
 
 
-type TokenM m r = (MonadIO m, MonadReader r m, HasCapabilityCtx r)
+type OrizenticM m r = (MonadIO m, MonadReader r m, HasOrizenticCtx r)
 
 
-validateToken :: TokenM m r => JWT UnverifiedJWT -> m (Maybe (JWT VerifiedJWT))
+validateToken :: OrizenticM m r => JWT UnverifiedJWT -> m (Maybe (JWT VerifiedJWT))
 validateToken jwt = do
     now <- utcTimeToPOSIXSeconds <$> liftIO getCurrentTime
-    (CapabilityCtx s _) <- hasCapabilityCtx <$> ask
+    (OrizenticCtx s _) <- hasOrizenticCtx <$> ask
     case verify s jwt of
         Nothing -> pure Nothing
         Just vjwt -> if isExpired now (claims jwt)
@@ -100,7 +100,7 @@ checkAuthorizations fn token =
         Just rn_ -> fn rn_ (permissions claimsSet)
 
 
-createClaims :: TokenM m r => Issuer -> Maybe TTL -> ResourceName -> Username -> Permissions -> m JWTClaimsSet
+createClaims :: OrizenticM m r => Issuer -> Maybe TTL -> ResourceName -> Username -> Permissions -> m JWTClaimsSet
 createClaims (Issuer issuer) ttl (ResourceName resourceName) (Username name) (Permissions perms) =
     let ttl_ = (\(TTL val) -> val) <$> ttl
     in do
@@ -120,14 +120,14 @@ createClaims (Issuer issuer) ttl (ResourceName resourceName) (Username name) (Pe
     pure tok
 
 
-revokeClaims :: TokenM m r => JWTClaimsSet -> m ()
+revokeClaims :: OrizenticM m r => JWTClaimsSet -> m ()
 revokeClaims tok = do
     (CapabilityCtx _ (TokenStore store)) <- hasCapabilityCtx <$> ask
     liftIO $ modifyIORef store (L.delete tok)
     pure ()
 
 
-revokeByUUID :: TokenM m r => Text -> m ()
+revokeByUUID :: OrizenticM m r => Text -> m ()
 revokeByUUID uuid = do
     (CapabilityCtx _ (TokenStore store)) <- hasCapabilityCtx <$> ask
     liftIO $ modifyIORef store (filter (\c -> getUUID c /= Just uuid))
@@ -135,19 +135,19 @@ revokeByUUID uuid = do
     getUUID = fmap stringOrURIToText . jti
     
 
-replaceClaims :: TokenM m r => [JWTClaimsSet] -> m ()
+replaceClaims :: OrizenticM m r => [JWTClaimsSet] -> m ()
 replaceClaims newClaims = do
     (CapabilityCtx _ (TokenStore store)) <- hasCapabilityCtx <$> ask
     liftIO $ writeIORef store newClaims
 
 
-listClaims :: TokenM m r => m [JWTClaimsSet]
+listClaims :: OrizenticM m r => m [JWTClaimsSet]
 listClaims = do
     (CapabilityCtx _ (TokenStore store)) <- hasCapabilityCtx <$> ask
     liftIO $ readIORef store
 
 
-findClaim :: TokenM m r => Text -> m (Maybe JWTClaimsSet)
+findClaim :: OrizenticM m r => Text -> m (Maybe JWTClaimsSet)
 findClaim uuid = do
     lst <- listClaims
     pure $ listToMaybe $ filter (\c -> getUUID c == Just uuid) lst
@@ -170,7 +170,7 @@ findClaim uuid = do
 --         Right (CapDb claims) -> liftIO $ writeIORef store claims
 
 
-encodeToken :: TokenM m r => JWTClaimsSet -> m Text
+encodeToken :: OrizenticM m r => JWTClaimsSet -> m Text
 encodeToken token = do
     (CapabilityCtx s _) <- hasCapabilityCtx <$> ask
     pure $ encodeSigned HS256 s token
