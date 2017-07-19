@@ -1,14 +1,14 @@
 name:                orizentic
 version:             0.1.0.0
--- synopsis:
--- description:
+synopsis:            Token-based authentication and authorization
+description:         A library and CLI application for generating and validating authentication tokens and their accompanying database
 homepage:            https://github.com/luminescent-dreams/orizentic#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Savanni D'Gerinel
 maintainer:          example@example.com
 copyright:           2017 Savanni D'Gerinel
-category:            Web
+category:            Authentication
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
@@ -37,7 +37,7 @@ library
     if flag(dev)
         ghc-options:    -Wall
     else
-        ghc-options:    -O2 -Wall -Werror
+        ghc-options:    -Wall -Werror
     hs-source-dirs:     src
     default-language:   Haskell2010
 
@@ -59,7 +59,8 @@ executable orizentic
     if flag(dev)
         ghc-options:    -Wall -threaded -rtsopts -with-rtsopts=-N
     else
-        ghc-options:    -Wall -threaded -rtsopts -with-rtsopts=-N -O2 -Werror
+        ghc-options:    -Wall -threaded -rtsopts -with-rtsopts=-N -Werror
+    default-language:   Haskell2010
 
 
 test-suite orizentic-test
