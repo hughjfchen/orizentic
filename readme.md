@@ -1,5 +1,7 @@
 # Orizentic
 
+[![CircleCI](https://circleci.com/gh/luminescent-dreams/orizentic/tree/sol.svg?style=svg)](https://circleci.com/gh/luminescent-dreams/orizentic/tree/sol)
+
 Orizentic provides a library that streamlines token-based authentication and a CLI tool for maintaining the database.
 
 ## Credit

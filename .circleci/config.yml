@@ -1,0 +1,30 @@
+---
+version: 2
+jobs:
+  build:
+    docker:
+      - image: savannidgerinel/haskell-webapp:latest
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      - restore_cache:
+          key: stack-{{ checksum "orizentic.cabal" }}
+
+      - run:
+          name: build
+          command: |
+            stack build
+
+      - run:
+          name: run tests
+          command: |
+            stack test
+
+      - save_cache:
+          paths:
+            - ~/.stack
+          key: stack-{{ checksum "orizentic.cabal" }}
+

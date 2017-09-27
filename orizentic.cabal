@@ -6,7 +6,7 @@ homepage:            https://github.com/luminescent-dreams/orizentic#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Savanni D'Gerinel
-maintainer:          example@example.com
+maintainer:          savanni@luminescent-dreams.com
 copyright:           2017 Savanni D'Gerinel
 category:            Authentication
 build-type:          Simple
