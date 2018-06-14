@@ -12,3 +12,4 @@ health.sqlite.backup
 tags
 www/.next
 index.js
+vendor/

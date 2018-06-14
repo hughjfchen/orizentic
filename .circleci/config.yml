@@ -1,12 +1,12 @@
 ---
 version: 2
 jobs:
-  build:
+  build-haskell:
     docker:
       - image: savannidgerinel/haskell-webapp:latest
 
-    working_directory: ~/repo
-
+    working_directory: ~/repo/haskell
+    
     steps:
       - checkout
 
@@ -16,15 +16,51 @@ jobs:
       - run:
           name: build
           command: |
+            cd haskell
             stack build
 
       - run:
           name: run tests
           command: |
+            cd haskell
             stack test
 
       - save_cache:
           paths:
             - ~/.stack
           key: stack-{{ checksum "orizentic.cabal" }}
+
+  build-go:
+    docker:
+      - image: savannidgerinel/golang:latest
+
+    working_directory: /go/src/github.com/luminescent-dreams/orizentic
+
+    steps:
+      - checkout
+
+      - run:
+          name: build
+          command: |
+            cd go
+            dep ensure
+            go build ./...
+
+      - run:
+          name: test
+          command: |
+            cd go
+            go get -u github.com/onsi/ginkgo/ginkgo
+            ginkgo orizentic/...
+
+workflows:
+  version: 2
+
+  build-haskell:
+    jobs:
+      - build-haskell
+
+  build-go:
+    jobs:
+      - build-go
 
