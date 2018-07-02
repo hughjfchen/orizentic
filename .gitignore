@@ -13,3 +13,4 @@ tags
 www/.next
 index.js
 vendor/
+rust/target/

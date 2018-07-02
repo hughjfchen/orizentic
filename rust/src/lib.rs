@@ -9,30 +9,37 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 #[derive(PartialEq)]
+#[derive(Clone)]
 pub struct ResourceName(pub String);
 
 #[derive(Debug)]
 #[derive(PartialEq)]
+#[derive(Clone)]
 pub struct Permissions(pub Vec<String>);
 
 #[derive(Debug)]
 #[derive(PartialEq)]
+#[derive(Clone)]
 pub struct Issuer(pub String);
 
 #[derive(Debug)]
 #[derive(PartialEq)]
+#[derive(Clone)]
 pub struct TTL(pub chrono::Duration);
 
 #[derive(Debug)]
 #[derive(PartialEq)]
+#[derive(Clone)]
 pub struct Username(pub String);
 
 #[derive(Debug)]
 #[derive(PartialEq)]
+#[derive(Clone)]
 pub struct Secret(pub String);
 
 #[derive(Debug)]
 #[derive(PartialEq)]
+#[derive(Clone)]
 pub struct ClaimSet {
     pub id: String,
     pub audience: Username,
@@ -43,7 +50,7 @@ pub struct ClaimSet {
     pub permissions: Permissions,
 }
 
-pub struct OrizenticCtx(Secret, HashMap<Uuid, ClaimSet>);
+pub struct OrizenticCtx(Secret, HashMap<String, ClaimSet>);
 
 impl OrizenticCtx {
     pub fn new_ctx(secret: Secret, claims_lst: Vec<ClaimSet>) -> OrizenticCtx {
@@ -53,7 +60,7 @@ impl OrizenticCtx {
     //pub fn validate_token
     //pub fn check_authorizations
 
-    pub fn create_claims(&self,
+    pub fn create_claims(&mut self,
                          issuer: Issuer,
                          ttl: Option<TTL>,
                          resource_name: ResourceName,
@@ -64,7 +71,7 @@ impl OrizenticCtx {
             Some(TTL(ttl_)) => issued_at.checked_add_signed(ttl_),
             None => None,
         };
-        ClaimSet{
+        let claimset = ClaimSet{
             id: String::from(Uuid::new_v4().hyphenated().to_string()),
             audience: user_name,
             expiration,
@@ -72,17 +79,20 @@ impl OrizenticCtx {
             issued_at,
             resource: resource_name,
             permissions: perms,
-        }
+        };
+        let clr = claimset.clone();
+        self.1.insert(claimset.id.clone(), claimset);
+        clr
     }
 
-    pub fn revoke_claims(&self, claim: &ClaimSet) { }
+    pub fn revoke_claims(&mut self, claim: &ClaimSet) { }
 
     pub fn revoke_by_uuid(&self, claim_id: &String) { }
 
     pub fn replace_claims(&self, claims_lst: Vec<ClaimSet>) { }
 
-    pub fn list_claims(&self) -> Vec<&ClaimSet> {
-        Vec::new()
+    pub fn list_claims(&self) -> Vec<String> {
+        self.1.keys().map(| id | id.clone()).collect()
     }
 
     pub fn find_claims(&self, claims_id: String) -> Option<&ClaimSet> {
