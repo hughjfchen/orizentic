@@ -104,35 +104,29 @@ impl OrizenticCtx {
             aud: None,
             iss: None,
             sub: None,
-            algorithms: Vec::new(),
+            ..jwt::Validation::default()
         };
-        let res = jwt::decode::<ClaimSetJS>(text, &(self.0).0, &jwt::Validation::new(jwt::Algorithm::HS256));
+        let res = jwt::decode::<ClaimSetJS>(text, &(self.0).0, &validation);
         match res {
             Ok(res_) => {
-                let claims = res_.claims;
-                let in_db = self.1.get(&claims.jti);
-                if in_db.is_some() {
-                    Some(UnverifiedToken{text: text.clone(), claims: claims.to_claimset()})
-                } else {
-                    None
-                }
+                Some(UnverifiedToken{text: text.clone(), claims: res_.claims.to_claimset()})
             },
-            Err(err) => None,
+            Err(_) => None,
         }
     }
 
     pub fn validate_token(&self, token: &UnverifiedToken) -> Option<VerifiedToken> {
-        self.decode_and_validate_text(&token.text)
-    }
-
-    pub fn decode_and_validate_text(&self, text: &String) -> Option<VerifiedToken> {
-        let res = jwt::decode::<ClaimSetJS>(text, &(self.0).0, &jwt::Validation::new(jwt::Algorithm::HS256));
+        let validator = match token.claims.expiration {
+            Some(_) => jwt::Validation::default(),
+            None => jwt::Validation{ validate_exp: false, ..jwt::Validation::default() },
+        };
+        let res = jwt::decode::<ClaimSetJS>(&token.text, &(self.0).0, &validator);
         match res {
             Ok(res_) => {
                 let claims = res_.claims;
                 let in_db = self.1.get(&claims.jti);
                 if in_db.is_some() {
-                    Some(VerifiedToken{text: text.clone(), claims: claims.to_claimset()})
+                    Some(VerifiedToken{text: token.text.clone(), claims: claims.to_claimset()})
                 } else {
                     None
                 }
@@ -140,7 +134,13 @@ impl OrizenticCtx {
             Err(err) => None,
         }
     }
-    //pub fn check_authorizations
+
+    pub fn decode_and_validate_text(&self, text: &String) -> Option<VerifiedToken> {
+        match self.decode_text(text) {
+            Some(unverified) => self.validate_token(&unverified),
+            None => None,
+        }
+    }
 
     pub fn create_claims(&mut self,
                          issuer: Issuer,
@@ -186,5 +186,9 @@ impl OrizenticCtx {
     pub fn encode_claims(&self, claims: &ClaimSet) -> Result<String, jwt::errors::Error> {
         jwt::encode(&jwt::Header::default(), &ClaimSetJS::from_claimset(&claims), &(self.0).0)
     }
+}
+
+pub fn check_authorizations<F: FnOnce(&ResourceName, &Permissions) -> bool>(f: F, token: &VerifiedToken) -> bool {
+    f(&token.claims.resource, &token.claims.permissions)
 }
 

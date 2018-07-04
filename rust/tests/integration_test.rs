@@ -113,7 +113,6 @@ fn validates_present_tokens_with_a_valid_secret() {
         Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
     );
     let token_str = ctx.encode_claims(&claims).unwrap();
-    println!("[validates_present_tokens] {}", token_str);
     assert!(ctx.decode_and_validate_text(&token_str).is_some());
 }
 
@@ -134,10 +133,35 @@ fn rejects_expired_tokens() {
 
 #[test]
 fn accepts_tokens_that_have_no_expiration() {
+    let mut ctx = OrizenticCtx::new_ctx(Secret("ctx".to_string().into_bytes()), Vec::new());
+    let claims = ctx.create_claims(
+        Issuer(String::from("test")),
+        None,
+        ResourceName(String::from("resource-1")),
+        Username(String::from("Savanni")),
+        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+    );
+    let token_str = ctx.encode_claims(&claims).unwrap();
+    assert!(ctx.decode_and_validate_text(&token_str).is_some());
 }
 
 #[test]
 fn authorizes_a_token_with_the_correct_resource_and_permissions() {
+    let mut ctx = OrizenticCtx::new_ctx(Secret("ctx".to_string().into_bytes()), Vec::new());
+    let claims = ctx.create_claims(
+        Issuer(String::from("test")),
+        None,
+        ResourceName(String::from("resource-1")),
+        Username(String::from("Savanni")),
+        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+    );
+    let token_str = ctx.encode_claims(&claims).unwrap();
+    let token = ctx.decode_and_validate_text(&token_str).unwrap();
+    let res = check_authorizations(
+        |rn: &ResourceName, perms: &Permissions| *rn == ResourceName(String::from("resource-1")) && perms.0.contains(&String::from("grant")),
+        &token,
+    );
+    assert!(res);
 }
 
 #[test]
