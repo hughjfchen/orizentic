@@ -145,29 +145,8 @@ impl OrizenticCtx {
         }
     }
 
-    pub fn create_claimset(&mut self,
-                           issuer: Issuer,
-                           ttl: Option<TTL>,
-                           resource_name: ResourceName,
-                           user_name: Username,
-                           perms: Permissions) -> ClaimSet {
-        let issued_at: DateTime<Utc> = Utc::now();
-        let expiration = match ttl {
-            Some(TTL(ttl_)) => issued_at.checked_add_signed(ttl_),
-            None => None,
-        };
-        let claimset = ClaimSet{
-            id: String::from(Uuid::new_v4().hyphenated().to_string()),
-            audience: user_name,
-            expiration,
-            issuer,
-            issued_at,
-            resource: resource_name,
-            permissions: perms,
-        };
-        let clr = claimset.clone();
+    pub fn add_claimset(&mut self, claimset: ClaimSet) {
         self.1.insert(claimset.id.clone(), claimset);
-        clr
     }
 
     pub fn revoke_claimset(&mut self, claim: &ClaimSet) {
@@ -208,5 +187,26 @@ impl OrizenticCtx {
 
 pub fn check_authorizations<F: FnOnce(&ResourceName, &Permissions) -> bool>(f: F, token: &VerifiedToken) -> bool {
     f(&token.claims.resource, &token.claims.permissions)
+}
+
+pub fn create_claimset(issuer: Issuer,
+                       ttl: Option<TTL>,
+                       resource_name: ResourceName,
+                       user_name: Username,
+                       perms: Permissions) -> ClaimSet {
+    let issued_at: DateTime<Utc> = Utc::now();
+    let expiration = match ttl {
+        Some(TTL(ttl_)) => issued_at.checked_add_signed(ttl_),
+        None => None,
+    };
+    ClaimSet{
+        id: String::from(Uuid::new_v4().hyphenated().to_string()),
+        audience: user_name,
+        expiration,
+        issuer,
+        issued_at,
+        resource: resource_name,
+        permissions: perms,
+    }
 }
 
