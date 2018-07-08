@@ -10,6 +10,11 @@ use chrono::prelude::*;
 use uuid::Uuid;
 use std::collections::HashMap;
 
+pub enum Error {
+    JWTError(jwt::errors::Error),
+    UnknownToken(),
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct ResourceName(pub String);
 
@@ -95,7 +100,7 @@ impl OrizenticCtx {
         OrizenticCtx(secret, HashMap::new())
     }
 
-    pub fn decode_text(&self, text: &String) -> Option<UnverifiedToken> {
+    pub fn decode_text(&self, text: &String) -> Result<UnverifiedToken, Error> {
         let validation = jwt::Validation{
             leeway: 0,
             validate_exp: false,
@@ -108,14 +113,12 @@ impl OrizenticCtx {
         };
         let res = jwt::decode::<ClaimSetJS>(text, &(self.0).0, &validation);
         match res {
-            Ok(res_) => {
-                Some(UnverifiedToken{text: text.clone(), claims: res_.claims.to_claimset()})
-            },
-            Err(_) => None,
+            Ok(res_) => Ok(UnverifiedToken{text: text.clone(), claims: res_.claims.to_claimset()}),
+            Err(err) => Err(Error::JWTError(err)),
         }
     }
 
-    pub fn validate_token(&self, token: &UnverifiedToken) -> Option<VerifiedToken> {
+    pub fn validate_token(&self, token: &UnverifiedToken) -> Result<VerifiedToken, Error> {
         let validator = match token.claims.expiration {
             Some(_) => jwt::Validation::default(),
             None => jwt::Validation{ validate_exp: false, ..jwt::Validation::default() },
@@ -126,28 +129,28 @@ impl OrizenticCtx {
                 let claims = res_.claims;
                 let in_db = self.1.get(&claims.jti);
                 if in_db.is_some() {
-                    Some(VerifiedToken{text: token.text.clone(), claims: claims.to_claimset()})
+                    Ok(VerifiedToken{text: token.text.clone(), claims: claims.to_claimset()})
                 } else {
-                    None
+                    Err(Error::UnknownToken())
                 }
             },
-            Err(err) => None,
+            Err(err) => Err(Error::JWTError(err)),
         }
     }
 
-    pub fn decode_and_validate_text(&self, text: &String) -> Option<VerifiedToken> {
+    pub fn decode_and_validate_text(&self, text: &String) -> Result<VerifiedToken, Error> {
         match self.decode_text(text) {
-            Some(unverified) => self.validate_token(&unverified),
-            None => None,
+            Ok(unverified) => self.validate_token(&unverified),
+            Err(err) => Err(err),
         }
     }
 
-    pub fn create_claims(&mut self,
-                         issuer: Issuer,
-                         ttl: Option<TTL>,
-                         resource_name: ResourceName,
-                         user_name: Username,
-                         perms: Permissions) -> ClaimSet {
+    pub fn create_claimset(&mut self,
+                           issuer: Issuer,
+                           ttl: Option<TTL>,
+                           resource_name: ResourceName,
+                           user_name: Username,
+                           perms: Permissions) -> ClaimSet {
         let issued_at: DateTime<Utc> = Utc::now();
         let expiration = match ttl {
             Some(TTL(ttl_)) => issued_at.checked_add_signed(ttl_),
@@ -167,24 +170,39 @@ impl OrizenticCtx {
         clr
     }
 
-    pub fn revoke_claims(&mut self, claim: &ClaimSet) {
+    pub fn revoke_claimset(&mut self, claim: &ClaimSet) {
         self.1.remove(&claim.id);
     }
 
-    pub fn revoke_by_uuid(&self, claim_id: &String) { }
+    pub fn revoke_by_uuid(&mut self, claim_id: &String) {
+        self.1.remove(claim_id);
+    }
 
-    pub fn replace_claims(&self, claims_lst: Vec<ClaimSet>) { }
+    pub fn replace_claimsets(&mut self, claims_lst: Vec<ClaimSet>) { }
 
-    pub fn list_claims(&self) -> Vec<String> {
+    pub fn list_claimsets(&self) -> Vec<String> {
         self.1.keys().map(| id | id.clone()).collect()
     }
 
-    pub fn find_claims(&self, claims_id: String) -> Option<&ClaimSet> {
-        None
+    pub fn find_claimset(&self, claims_id: &String) -> Option<&ClaimSet> {
+        self.1.get(claims_id)
     }
 
-    pub fn encode_claims(&self, claims: &ClaimSet) -> Result<String, jwt::errors::Error> {
-        jwt::encode(&jwt::Header::default(), &ClaimSetJS::from_claimset(&claims), &(self.0).0)
+    pub fn encode_claimset(&self, claims: &ClaimSet) -> Result<VerifiedToken, Error> {
+        let in_db = self.1.get(&claims.id);
+        if in_db.is_some() {
+            let text = jwt::encode(&jwt::Header::default(), &ClaimSetJS::from_claimset(&claims), &(self.0).0);
+            match text {
+                Ok(text_) => 
+                    Ok(VerifiedToken{
+                        text: text_,
+                        claims: claims.clone(),
+                    }),
+                Err(err) => Err(Error::JWTError(err)),
+            }
+        } else {
+            Err(Error::UnknownToken())
+        }
     }
 }
 
