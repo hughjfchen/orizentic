@@ -30,5 +30,5 @@ The `subject` in this case is synonymous with Resource and is a name for the res
 
 ## Language support
 
-This library and application are supported for Haskell and for Go. The token database is compatible across tools. See readme's in the language directory for usage information.
+This library and application are supported for Haskell, Go, and Rust. The token database is compatible across tools. See readme's in the language directory for usage information.
 
