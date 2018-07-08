@@ -5,7 +5,7 @@ jobs:
     docker:
       - image: savannidgerinel/haskell-webapp:latest
 
-    working_directory: ~/repo/haskell
+    working_directory: ~/repo
     
     steps:
       - checkout
@@ -57,7 +57,7 @@ jobs:
     docker:
       - image: rust:latest
 
-    working_directory: ~/repo/rust
+    working_directory: ~/repo
 
     steps:
       - checkout
@@ -68,11 +68,13 @@ jobs:
       - run:
           name: test
           command: |
+            cd rust
             cargo test
 
       - run:
           name: build
           command: |
+            cd rust
             cargo build --release
 
       - save_cache:
