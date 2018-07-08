@@ -11,7 +11,7 @@ jobs:
       - checkout
 
       - restore_cache:
-          key: stack-{{ checksum "orizentic.cabal" }}
+          key: stack-{{ checksum "haskell/orizentic.cabal" }}
 
       - run:
           name: build
@@ -28,7 +28,7 @@ jobs:
       - save_cache:
           paths:
             - ~/.stack
-          key: stack-{{ checksum "orizentic.cabal" }}
+          key: stack-{{ checksum "haskell/orizentic.cabal" }}
 
   build-go:
     docker:
@@ -63,7 +63,7 @@ jobs:
       - checkout
 
       - restore_cache:
-          key: rust-{{ checksum "Cargo.lock" }}
+          key: rust-{{ checksum "rust/Cargo.lock" }}
 
       - run:
           name: test
@@ -78,7 +78,7 @@ jobs:
             cargo build --release
 
       - save_cache:
-          key: project-cache
+          key: rust-{{ checksum "rust/Cargo.lock" }}
           paths:
             - "~/.cargo"
 
