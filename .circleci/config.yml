@@ -65,7 +65,7 @@ jobs:
       - restore_cache:
           key: rust-{{ checksum "Cargo.lock" }}
 
-      - test:
+      - run:
           name: test
           comand: |
             cargo test
