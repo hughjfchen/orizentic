@@ -11,3 +11,14 @@ serde_derive = "1"
 serde = "1"
 uuid = { version = "0.6.5", features = ["v4"] }
 
+[badges]
+circle-ci = { repository = "luminescent-dreams/orizentic", branch = "sol" }
+
+[lib]
+name = "orizentic"
+path = "src/lib.rs"
+
+[[bin]]
+name = "orizentic"
+path = "src/bin.rs"
+

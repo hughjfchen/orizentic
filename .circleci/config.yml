@@ -53,6 +53,33 @@ jobs:
             go get -u github.com/onsi/ginkgo/ginkgo
             ginkgo orizentic/...
 
+  build-rust:
+    docker:
+      - image: rust:latest
+
+    working_directory: ~/repo/rust
+
+    steps:
+      - checkout
+
+      - restore_cache:
+          key: rust-{{ checksum "Cargo.lock" }}
+
+      - test:
+          name: test
+          comand: |
+            cargo test
+
+      - run:
+          name: build
+          command: |
+            cargo build --release
+
+      - save_cache:
+          key: project-cache
+          paths:
+            - "~/.cargo"
+
 workflows:
   version: 2
 
@@ -63,4 +90,8 @@ workflows:
   build-go:
     jobs:
       - build-go
+
+  build-rust:
+    jobs:
+      - build-rust
 
