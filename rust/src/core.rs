@@ -1,4 +1,5 @@
 extern crate serde;
+extern crate serde_json;
 extern crate yaml_rust;
 extern crate chrono;
 extern crate jsonwebtoken as jwt;
@@ -216,7 +217,7 @@ pub fn create_claimset(issuer: Issuer,
                        resource_name: ResourceName,
                        user_name: Username,
                        perms: Permissions) -> ClaimSet {
-    let issued_at: DateTime<Utc> = Utc::now();
+    let issued_at: DateTime<Utc> = Utc::now().with_nanosecond(0).unwrap();
     let expiration = match ttl {
         Some(TTL(ttl_)) => issued_at.checked_add_signed(ttl_),
         None => None,
@@ -249,4 +250,12 @@ pub fn check_authorizations<F: FnOnce(&ResourceName, &Permissions) -> bool>(f: F
 }
 
 
+pub fn to_json(claims: &ClaimSet) -> Result<String, serde_json::Error> {
+    serde_json::to_string(&(ClaimSetJS::from_claimset(claims)))
+}
+
+pub fn from_json(text: String) -> Result<ClaimSet, serde_json::Error> {
+    serde_json::from_str(&text)
+        .map(|x| ClaimSetJS::to_claimset(&x))
+}
 

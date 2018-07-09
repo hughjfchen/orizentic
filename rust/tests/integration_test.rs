@@ -272,3 +272,25 @@ fn rejects_a_token_with_the_incorrect_resource_name() {
     assert!(!res);
 }
 
+#[test]
+fn claims_serialize_to_json() {
+    let claims = create_claimset(
+        Issuer(String::from("test")),
+        None,
+        ResourceName(String::from("resource-2")),
+        Username(String::from("Savanni")),
+        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+    );
+
+    let expected_jti = format!("\"jti\":\"{}\"", claims.id);
+
+    let claim_str = to_json(&claims)
+        .expect("to_json threw an error");
+        //.expect(assert!(false, format!("[claims_serilazie_to_json] {}", err)));
+    assert!(claim_str.contains(&expected_jti));
+
+    let claims_ = from_json(claim_str)
+        .expect("from_json threw an error");
+    assert_eq!(claims, claims_);
+}
+
