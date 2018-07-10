@@ -182,8 +182,8 @@ impl OrizenticCtx {
     pub fn replace_claimsets(&mut self, claims_lst: Vec<ClaimSet>) { }
 
     /// List all of the `ClaimSet` IDs in the database.
-    pub fn list_claimsets(&self) -> Vec<String> {
-        self.1.keys().map(| id | id.clone()).collect()
+    pub fn list_claimsets(&self) -> Vec<&ClaimSet> {
+        self.1.values().map(| item | item).collect()
     }
 
     /// Find a `ClaimSet` by ID.
@@ -254,7 +254,7 @@ pub fn to_json(claims: &ClaimSet) -> Result<String, serde_json::Error> {
     serde_json::to_string(&(ClaimSetJS::from_claimset(claims)))
 }
 
-pub fn from_json(text: String) -> Result<ClaimSet, serde_json::Error> {
+pub fn from_json(text: &String) -> Result<ClaimSet, serde_json::Error> {
     serde_json::from_str(&text)
         .map(|x| ClaimSetJS::to_claimset(&x))
 }

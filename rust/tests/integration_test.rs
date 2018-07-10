@@ -4,6 +4,7 @@ extern crate orizentic;
 use std::time;
 use std::thread;
 use orizentic::*;
+use orizentic::filedb::*;
 
 #[test]
 fn can_create_a_new_claimset() {
@@ -27,7 +28,7 @@ fn can_create_a_new_claimset() {
     {
         let tok_list = ctx.list_claimsets();
         assert_eq!(tok_list.len(), 1);
-        assert!(tok_list.contains(&claims.id));
+        assert!(tok_list.contains(&&claims));
     }
 
     let claims2 = create_claimset(
@@ -44,8 +45,8 @@ fn can_create_a_new_claimset() {
 
     let tok_list = ctx.list_claimsets();
     assert_eq!(tok_list.len(), 2);
-    assert!(tok_list.contains(&claims.id));
-    assert!(tok_list.contains(&claims2.id));
+    assert!(tok_list.contains(&&claims));
+    assert!(tok_list.contains(&&claims2));
 }
 
 #[test]
@@ -129,8 +130,8 @@ fn can_revoke_a_token() {
     ctx.revoke_claimset(&claims);
     let tok_list = ctx.list_claimsets();
     assert_eq!(tok_list.len(), 1);
-    assert!(!tok_list.contains(&claims.id));
-    assert!(tok_list.contains(&claims2.id));
+    assert!(!tok_list.contains(&&claims));
+    assert!(tok_list.contains(&&claims2));
 }
 
 #[test]
@@ -289,8 +290,43 @@ fn claims_serialize_to_json() {
         //.expect(assert!(false, format!("[claims_serilazie_to_json] {}", err)));
     assert!(claim_str.contains(&expected_jti));
 
-    let claims_ = from_json(claim_str)
+    let claims_ = from_json(&claim_str)
         .expect("from_json threw an error");
     assert_eq!(claims, claims_);
+    println!("[claim_str] {}", claim_str);
+}
+
+#[test]
+fn save_and_load() {
+    let mut ctx = OrizenticCtx::new_ctx(Secret("ctx".to_string().into_bytes()), Vec::new());
+    let claims = create_claimset(
+        Issuer(String::from("test")),
+        None,
+        ResourceName(String::from("resource-2")),
+        Username(String::from("Savanni")),
+        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+    );
+    ctx.add_claimset(claims.clone());
+
+    let claims2 = create_claimset(
+        Issuer(String::from("test")),
+        Some(TTL(chrono::Duration::seconds(3600))),
+        ResourceName(String::from("resource-2")),
+        Username(String::from("Savanni")),
+        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+    );
+    ctx.add_claimset(claims2.clone());
+
+    let res = save_claims_to_file(&ctx.list_claimsets(), &String::from("tmp/claims.db"));
+    assert!(res.is_ok());
+
+    let claimset = load_claims_from_file(&String::from("tmp/claims.db"));
+    match claimset {
+        Ok(claimset_) => {
+            assert!(claimset_.contains(&claims));
+            assert!(claimset_.contains(&claims2));
+        },
+        Err(err) => assert!(false, err),
+    }
 }
 
