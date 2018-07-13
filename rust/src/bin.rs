@@ -30,9 +30,6 @@ pub fn main() {
                           .map(|s| s.into_bytes())
                           .expect("ORIZENTIC_SECRET contains invalid Unicode sequences")));
 
-    println!("ORIZENTIC_DB:     {:?}", db_path);
-    println!("ORIZENTIC_SECRET: {:?}", secret);
-
     let matches = App::new("orizentic cli")
         .subcommand(SubCommand::with_name("list"))
         .subcommand(SubCommand::with_name("create")
@@ -50,7 +47,7 @@ pub fn main() {
     match matches.subcommand() {
         ("list",   _) => { list_tokens(db_path) },
         ("create", Some(args)) => { create_token(db_path, secret, args) },
-        ("revoke", Some(args)) => { revoke_token(db_path, secret, args) },
+        ("revoke", Some(args)) => { revoke_token(db_path, args) },
         ("encode", Some(args)) => { encode_token(db_path, secret, args) },
         (cmd, _) => { println!("unknown subcommand: {}", cmd); },
     }
@@ -90,6 +87,57 @@ fn list_tokens(db_path: Option<String>) {
 fn create_token(db_path: Option<String>, secret: Option<Secret>, args: &ArgMatches) {
     let db_path_ = db_path.expect("ORIZENTIC_DB is required for this operation");
     let secret_ = secret.expect("ORIZENTIC_SECRET is required for this operation");
+    let issuer = args.value_of("issuer")
+        .map(|x| Issuer(String::from(x)))
+        .expect("--issuer is a required parameter");
+    let ttl: Option<TTL> = args.value_of("ttl")
+        .map(|x| x.parse()
+            .and_then(|d| Ok(TTL(Duration::seconds(d))))
+            .map_err(|err| OrizenticErr::ParseError(err))
+            .expect("Failed to parse TTL"));
+    let resource_name = args.value_of("resource")
+        .map(|x| ResourceName(String::from(x)))
+        .expect("--resource is a required parameter");
+    let username = args.value_of("username")
+        .map(|x| Username(String::from(x)))
+        .expect("--username is a required parameter");
+    let perms: Permissions = args.value_of("perms")
+        .map(|str| Permissions(str.split(',').map(|s| String::from(s)).collect()))
+        .expect("--permissions is a required parameter");
+
+    let claimsets = orizentic::filedb::load_claims_from_file(&db_path_);
+    match claimsets {
+        Err(err) => {
+            println!("claimset failed to load: {}", err);
+            std::process::exit(1);
+        },
+        Ok(claimsets_) => {
+            let new_claimset = ClaimSet::new(issuer, ttl, resource_name, username, perms);
+            let mut ctx = orizentic::OrizenticCtx::new(secret_, claimsets_);
+            ctx.add_claimset(new_claimset.clone());
+            match orizentic::filedb::save_claims_to_file(&ctx.list_claimsets(), &db_path_) {
+                Err(err) => {
+                    println!("Failed to write claimset to file: {:?}", err);
+                    std::process::exit(1);
+                },
+                Ok(_) => {
+                    match ctx.encode_claimset(&new_claimset) {
+                        Ok(token) => println!("{}", token.text),
+                        Err(err) => {
+                            println!("token could not be encoded: {:?}", err);
+                            std::process::exit(1);
+                        },
+                    }
+                },
+            }
+        }
+    }
+
+}
+
+
+fn revoke_token(db_path: Option<String>, args: &ArgMatches) {
+    let db_path_ = db_path.expect("ORIZENTIC_DB is required for this operation");
     let claimsets = orizentic::filedb::load_claims_from_file(&db_path_);
 
     match claimsets {
@@ -98,41 +146,49 @@ fn create_token(db_path: Option<String>, secret: Option<Secret>, args: &ArgMatch
             std::process::exit(1);
         },
         Ok(claimsets_) => {
-            let issuer = args.value_of("issuer")
-                .map(|x| Issuer(String::from(x)))
-                .expect("--issuer is a required parameter");
-            let ttl: Option<TTL> = args.value_of("ttl")
-                .map(|x| x.parse()
-                    .and_then(|d| Ok(TTL(Duration::seconds(d))))
-                    .map_err(|err| OrizenticErr::ParseError(err))
-                    .expect("Failed to parse TTL"));
-            let resource_name = args.value_of("resource")
-                .map(|x| ResourceName(String::from(x)))
-                .expect("--resource is a required parameter");
-            let username = args.value_of("username")
-                .map(|x| Username(String::from(x)))
-                .expect("--username is a required parameter");
-            let perms: Permissions = args.value_of("perms")
-                .map(|str| Permissions(str.split(',').map(|s| String::from(s)).collect()))
-                .expect("--permissions is a required parameter");
-
-            let new_claimset = ClaimSet::new(issuer, ttl, resource_name, username, perms);
-            let mut ctx = orizentic::OrizenticCtx::new(secret_, claimsets_);
-            ctx.add_claimset(new_claimset);
-            orizentic::filedb::save_claims_to_file(&ctx.list_claimsets(), &db_path_)
-                .expect("writing to file failed");
-        }
+            let id = args.value_of("id").map(String::from).expect("--id is a required parameter");
+            let mut ctx = orizentic::OrizenticCtx::new(Secret(String::from("").into_bytes()), claimsets_);
+            ctx.revoke_by_uuid(&id);
+            match orizentic::filedb::save_claims_to_file(&ctx.list_claimsets(), &db_path_) {
+                Err(err) => {
+                    println!("Failed to write claimset to file: {:?}", err);
+                    std::process::exit(1);
+                },
+                Ok(_) => {},
+            }
+        },
     }
-
-}
-
-
-fn revoke_token(db_path: Option<String>, secret: Option<Secret>, args: &ArgMatches) {
-    println!("revoke_token");
 }
 
 
 fn encode_token(db_path: Option<String>, secret: Option<Secret>, args: &ArgMatches) {
-    println!("encode_token");
+    let db_path_ = db_path.expect("ORIZENTIC_DB is required for this operation");
+    let secret_ = secret.expect("ORIZENTIC_SECRET is required for this operation");
+    let id = args.value_of("id").map(String::from).expect("--id is a required parameter");
+
+    let claimsets = orizentic::filedb::load_claims_from_file(&db_path_);
+    match claimsets {
+        Err(err) => {
+            println!("claimset failed to load: {}", err);
+            std::process::exit(1);
+        },
+        Ok(claimsets_) => {
+            let ctx = orizentic::OrizenticCtx::new(secret_, claimsets_);
+            let claimset = ctx.find_claimset(&id);
+            match claimset {
+                Some(claimset_) => match ctx.encode_claimset(&claimset_) {
+                    Ok(token) => println!("{}", token.text),
+                    Err(err) => {
+                        println!("token could not be encoded: {:?}", err);
+                        std::process::exit(1);
+                    }
+                },
+                None => {
+                    println!("No claimset found");
+                    std::process::exit(1);
+                }
+            }
+        },
+    }
 }
 

@@ -4,7 +4,7 @@ use core;
 
 use std::fs::File;
 use std::path::Path;
-use std::io::{ Read, Error, Lines, Write };
+use std::io::{ Read, Error, Write };
 
 pub fn save_claims_to_file(claimsets: &Vec<&core::ClaimSet>, path: &String) -> Result<(), Error> {
     let path = Path::new(path);

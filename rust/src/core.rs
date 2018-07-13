@@ -10,6 +10,7 @@ use core::uuid::Uuid;
 use std::collections::HashMap;
 
 /// Orizentic Errors
+#[derive(Debug)]
 pub enum Error {
     /// An underlying JWT decoding error. May be replaced with Orizentic semantic errors to better
     /// encapsulate the JWT library.
