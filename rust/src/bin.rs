@@ -1,13 +1,19 @@
+extern crate chrono;
 extern crate clap;
 extern crate itertools;
 extern crate orizentic;
 
+use chrono::{ Duration };
 use clap::{Arg, App, SubCommand, ArgMatches};
 use std::env;
 use itertools::Itertools;
 
 use orizentic::*;
 
+#[derive(Debug)]
+enum OrizenticErr {
+    ParseError(std::num::ParseIntError),
+}
 
 // ORIZENTIC_DB
 // ORIZENTIC_SECRET
@@ -84,12 +90,40 @@ fn list_tokens(db_path: Option<String>) {
 fn create_token(db_path: Option<String>, secret: Option<Secret>, args: &ArgMatches) {
     let db_path_ = db_path.expect("ORIZENTIC_DB is required for this operation");
     let secret_ = secret.expect("ORIZENTIC_SECRET is required for this operation");
-    println!("create_token");
-    println!("issuer: {}", args.value_of("issuer").unwrap());
-    println!("ttl: {}", args.value_of("ttl").unwrap());
-    println!("resource: {}", args.value_of("resource").unwrap());
-    println!("username: {}", args.value_of("username").unwrap());
-    println!("perms: {}", args.value_of("perms").unwrap());
+    let claimsets = orizentic::filedb::load_claims_from_file(&db_path_);
+
+    match claimsets {
+        Err(err) => {
+            println!("claimset failed to load: {}", err);
+            std::process::exit(1);
+        },
+        Ok(claimsets_) => {
+            let issuer = args.value_of("issuer")
+                .map(|x| Issuer(String::from(x)))
+                .expect("--issuer is a required parameter");
+            let ttl: Option<TTL> = args.value_of("ttl")
+                .map(|x| x.parse()
+                    .and_then(|d| Ok(TTL(Duration::seconds(d))))
+                    .map_err(|err| OrizenticErr::ParseError(err))
+                    .expect("Failed to parse TTL"));
+            let resource_name = args.value_of("resource")
+                .map(|x| ResourceName(String::from(x)))
+                .expect("--resource is a required parameter");
+            let username = args.value_of("username")
+                .map(|x| Username(String::from(x)))
+                .expect("--username is a required parameter");
+            let perms: Permissions = args.value_of("perms")
+                .map(|str| Permissions(str.split(',').map(|s| String::from(s)).collect()))
+                .expect("--permissions is a required parameter");
+
+            let new_claimset = ClaimSet::new(issuer, ttl, resource_name, username, perms);
+            let mut ctx = orizentic::OrizenticCtx::new(secret_, claimsets_);
+            ctx.add_claimset(new_claimset);
+            orizentic::filedb::save_claims_to_file(&ctx.list_claimsets(), &db_path_)
+                .expect("writing to file failed");
+        }
+    }
+
 }
 
 

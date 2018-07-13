@@ -8,8 +8,8 @@ use orizentic::filedb::*;
 
 #[test]
 fn can_create_a_new_claimset() {
-    let mut ctx = OrizenticCtx::new_ctx(Secret("abcdefg".to_string().into_bytes()), Vec::new());
-    let claims = create_claimset(
+    let mut ctx = OrizenticCtx::new(Secret("abcdefg".to_string().into_bytes()), Vec::new());
+    let claims = ClaimSet::new(
         Issuer(String::from("test")),
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-1")),
@@ -31,7 +31,7 @@ fn can_create_a_new_claimset() {
         assert!(tok_list.contains(&&claims));
     }
 
-    let claims2 = create_claimset(
+    let claims2 = ClaimSet::new(
         Issuer(String::from("test")),
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-2")),
@@ -51,15 +51,15 @@ fn can_create_a_new_claimset() {
 
 #[test]
 fn can_retrieve_claim_by_id() {
-    let mut ctx = OrizenticCtx::new_ctx(Secret("abcdefg".to_string().into_bytes()), Vec::new());
-    let claims = create_claimset(
+    let mut ctx = OrizenticCtx::new(Secret("abcdefg".to_string().into_bytes()), Vec::new());
+    let claims = ClaimSet::new(
         Issuer(String::from("test")),
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-1")),
         Username(String::from("Savanni")),
         Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
     );
-    let claims2 = create_claimset(
+    let claims2 = ClaimSet::new(
         Issuer(String::from("test")),
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-2")),
@@ -79,15 +79,15 @@ fn can_retrieve_claim_by_id() {
 
 #[test]
 fn can_revoke_claim_by_id() {
-    let mut ctx = OrizenticCtx::new_ctx(Secret("abcdefg".to_string().into_bytes()), Vec::new());
-    let claims = create_claimset(
+    let mut ctx = OrizenticCtx::new(Secret("abcdefg".to_string().into_bytes()), Vec::new());
+    let claims = ClaimSet::new(
         Issuer(String::from("test")),
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-1")),
         Username(String::from("Savanni")),
         Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
     );
-    let claims2 = create_claimset(
+    let claims2 = ClaimSet::new(
         Issuer(String::from("test")),
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-2")),
@@ -109,15 +109,15 @@ fn can_revoke_claim_by_id() {
 
 #[test]
 fn can_revoke_a_token() {
-    let mut ctx = OrizenticCtx::new_ctx(Secret("abcdefg".to_string().into_bytes()), Vec::new());
-    let claims = create_claimset(
+    let mut ctx = OrizenticCtx::new(Secret("abcdefg".to_string().into_bytes()), Vec::new());
+    let claims = ClaimSet::new(
         Issuer(String::from("test")),
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-1")),
         Username(String::from("Savanni")),
         Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
     );
-    let claims2 = create_claimset(
+    let claims2 = ClaimSet::new(
         Issuer(String::from("test")),
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-2")),
@@ -136,9 +136,9 @@ fn can_revoke_a_token() {
 
 #[test]
 fn rejects_tokens_with_an_invalid_secret() {
-    let mut ctx1 = OrizenticCtx::new_ctx(Secret("ctx1".to_string().into_bytes()), Vec::new());
-    let ctx2 = OrizenticCtx::new_ctx(Secret("ctx2".to_string().into_bytes()), Vec::new());
-    let claims = create_claimset(
+    let mut ctx1 = OrizenticCtx::new(Secret("ctx1".to_string().into_bytes()), Vec::new());
+    let ctx2 = OrizenticCtx::new(Secret("ctx2".to_string().into_bytes()), Vec::new());
+    let claims = ClaimSet::new(
         Issuer(String::from("test")),
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-1")),
@@ -152,8 +152,8 @@ fn rejects_tokens_with_an_invalid_secret() {
 
 #[test]
 fn rejects_tokens_that_are_absent_from_the_database() {
-    let mut ctx = OrizenticCtx::new_ctx(Secret("ctx".to_string().into_bytes()), Vec::new());
-    let claims = create_claimset(
+    let mut ctx = OrizenticCtx::new(Secret("ctx".to_string().into_bytes()), Vec::new());
+    let claims = ClaimSet::new(
         Issuer(String::from("test")),
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-1")),
@@ -169,8 +169,8 @@ fn rejects_tokens_that_are_absent_from_the_database() {
 
 #[test]
 fn validates_present_tokens_with_a_valid_secret() {
-    let mut ctx = OrizenticCtx::new_ctx(Secret("ctx".to_string().into_bytes()), Vec::new());
-    let claims = create_claimset(
+    let mut ctx = OrizenticCtx::new(Secret("ctx".to_string().into_bytes()), Vec::new());
+    let claims = ClaimSet::new(
         Issuer(String::from("test")),
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-1")),
@@ -184,8 +184,8 @@ fn validates_present_tokens_with_a_valid_secret() {
 
 #[test]
 fn rejects_expired_tokens() {
-    let mut ctx = OrizenticCtx::new_ctx(Secret("ctx".to_string().into_bytes()), Vec::new());
-    let claims = create_claimset(
+    let mut ctx = OrizenticCtx::new(Secret("ctx".to_string().into_bytes()), Vec::new());
+    let claims = ClaimSet::new(
         Issuer(String::from("test")),
         Some(TTL(chrono::Duration::seconds(1))),
         ResourceName(String::from("resource-1")),
@@ -200,8 +200,8 @@ fn rejects_expired_tokens() {
 
 #[test]
 fn accepts_tokens_that_have_no_expiration() {
-    let mut ctx = OrizenticCtx::new_ctx(Secret("ctx".to_string().into_bytes()), Vec::new());
-    let claims = create_claimset(
+    let mut ctx = OrizenticCtx::new(Secret("ctx".to_string().into_bytes()), Vec::new());
+    let claims = ClaimSet::new(
         Issuer(String::from("test")),
         None,
         ResourceName(String::from("resource-1")),
@@ -215,8 +215,8 @@ fn accepts_tokens_that_have_no_expiration() {
 
 #[test]
 fn authorizes_a_token_with_the_correct_resource_and_permissions() {
-    let mut ctx = OrizenticCtx::new_ctx(Secret("ctx".to_string().into_bytes()), Vec::new());
-    let claims = create_claimset(
+    let mut ctx = OrizenticCtx::new(Secret("ctx".to_string().into_bytes()), Vec::new());
+    let claims = ClaimSet::new(
         Issuer(String::from("test")),
         None,
         ResourceName(String::from("resource-1")),
@@ -226,17 +226,15 @@ fn authorizes_a_token_with_the_correct_resource_and_permissions() {
     ctx.add_claimset(claims.clone());
     let encoded_token = ctx.encode_claimset(&claims).ok().unwrap();
     let token = ctx.decode_and_validate_text(&encoded_token.text).ok().unwrap();
-    let res = check_authorizations(
-        |rn: &ResourceName, perms: &Permissions| *rn == ResourceName(String::from("resource-1")) && perms.0.contains(&String::from("grant")),
-        &token,
-    );
+    let res = token.check_authorizations(
+        |rn: &ResourceName, perms: &Permissions| *rn == ResourceName(String::from("resource-1")) && perms.0.contains(&String::from("grant")));
     assert!(res);
 }
 
 #[test]
 fn rejects_a_token_with_the_incorrect_permissions() {
-    let mut ctx = OrizenticCtx::new_ctx(Secret("ctx".to_string().into_bytes()), Vec::new());
-    let claims = create_claimset(
+    let mut ctx = OrizenticCtx::new(Secret("ctx".to_string().into_bytes()), Vec::new());
+    let claims = ClaimSet::new(
         Issuer(String::from("test")),
         None,
         ResourceName(String::from("resource-1")),
@@ -246,17 +244,15 @@ fn rejects_a_token_with_the_incorrect_permissions() {
     ctx.add_claimset(claims.clone());
     let encoded_token = ctx.encode_claimset(&claims).ok().unwrap();
     let token = ctx.decode_and_validate_text(&encoded_token.text).ok().unwrap();
-    let res = check_authorizations(
-        |rn: &ResourceName, perms: &Permissions| *rn == ResourceName(String::from("resource-1")) && perms.0.contains(&String::from("grant")),
-        &token,
-    );
+    let res = token.check_authorizations(
+        |rn: &ResourceName, perms: &Permissions| *rn == ResourceName(String::from("resource-1")) && perms.0.contains(&String::from("grant")));
     assert!(!res);
 }
 
 #[test]
 fn rejects_a_token_with_the_incorrect_resource_name() {
-    let mut ctx = OrizenticCtx::new_ctx(Secret("ctx".to_string().into_bytes()), Vec::new());
-    let claims = create_claimset(
+    let mut ctx = OrizenticCtx::new(Secret("ctx".to_string().into_bytes()), Vec::new());
+    let claims = ClaimSet::new(
         Issuer(String::from("test")),
         None,
         ResourceName(String::from("resource-2")),
@@ -266,16 +262,14 @@ fn rejects_a_token_with_the_incorrect_resource_name() {
     ctx.add_claimset(claims.clone());
     let encoded_token = ctx.encode_claimset(&claims).ok().unwrap();
     let token = ctx.decode_and_validate_text(&encoded_token.text).ok().unwrap();
-    let res = check_authorizations(
-        |rn: &ResourceName, perms: &Permissions| *rn == ResourceName(String::from("resource-1")) && perms.0.contains(&String::from("grant")),
-        &token,
-    );
+    let res = token.check_authorizations(
+        |rn: &ResourceName, perms: &Permissions| *rn == ResourceName(String::from("resource-1")) && perms.0.contains(&String::from("grant")));
     assert!(!res);
 }
 
 #[test]
 fn claims_serialize_to_json() {
-    let claims = create_claimset(
+    let claims = ClaimSet::new(
         Issuer(String::from("test")),
         None,
         ResourceName(String::from("resource-2")),
@@ -285,20 +279,20 @@ fn claims_serialize_to_json() {
 
     let expected_jti = format!("\"jti\":\"{}\"", claims.id);
 
-    let claim_str = to_json(&claims)
+    let claim_str = claims.to_json()
         .expect("to_json threw an error");
         //.expect(assert!(false, format!("[claims_serilazie_to_json] {}", err)));
     assert!(claim_str.contains(&expected_jti));
 
-    let claims_ = from_json(&claim_str)
+    let claims_ = ClaimSet::from_json(&claim_str)
         .expect("from_json threw an error");
     assert_eq!(claims, claims_);
 }
 
 #[test]
 fn save_and_load() {
-    let mut ctx = OrizenticCtx::new_ctx(Secret("ctx".to_string().into_bytes()), Vec::new());
-    let claims = create_claimset(
+    let mut ctx = OrizenticCtx::new(Secret("ctx".to_string().into_bytes()), Vec::new());
+    let claims = ClaimSet::new(
         Issuer(String::from("test")),
         None,
         ResourceName(String::from("resource-2")),
@@ -307,7 +301,7 @@ fn save_and_load() {
     );
     ctx.add_claimset(claims.clone());
 
-    let claims2 = create_claimset(
+    let claims2 = ClaimSet::new(
         Issuer(String::from("test")),
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-2")),

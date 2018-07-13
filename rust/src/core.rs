@@ -58,6 +58,40 @@ pub struct ClaimSet {
     pub permissions: Permissions,
 }
 
+impl ClaimSet {
+    /// Create a new `ClaimSet`. This will return a claimset with the expiration time calculated
+    /// from the TTL if the TTL is provided. No expiration will be set if no TTL is provided.
+    pub fn new(issuer: Issuer,
+               ttl: Option<TTL>,
+               resource_name: ResourceName,
+               user_name: Username,
+               perms: Permissions) -> ClaimSet {
+        let issued_at: DateTime<Utc> = Utc::now().with_nanosecond(0).unwrap();
+        let expiration = match ttl {
+            Some(TTL(ttl_)) => issued_at.checked_add_signed(ttl_),
+            None => None,
+        };
+        ClaimSet{
+            id: String::from(Uuid::new_v4().hyphenated().to_string()),
+            audience: user_name,
+            expiration,
+            issuer,
+            issued_at,
+            resource: resource_name,
+            permissions: perms,
+        }
+    }
+
+    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string(&(ClaimSetJS::from_claimset(self)))
+    }
+
+    pub fn from_json(text: &String) -> Result<ClaimSet, serde_json::Error> {
+        serde_json::from_str(&text)
+            .map(|x| ClaimSetJS::to_claimset(&x))
+    }
+}
+
 /// ClaimSetJS is an intermediary data structure between JWT serialization and a more usable
 /// ClaimSet.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -112,6 +146,17 @@ pub struct UnverifiedToken {
     pub claims: ClaimSet,
 }
 
+impl UnverifiedToken {
+    /// Decode a JWT text string without verification
+    pub fn decode_text(text: &String) -> Result<UnverifiedToken, Error> {
+        let res = jwt::dangerous_unsafe_decode::<ClaimSetJS>(text);
+        match res {
+            Ok(res_) => Ok(UnverifiedToken{text: text.clone(), claims: res_.claims.to_claimset()}),
+            Err(err) => Err(Error::JWTError(err)),
+        }
+    }
+}
+
 /// An VerifiedToken is a combination of the JWT serialization and the decoded `ClaimSet`. This will
 /// only be created by the `validate_function`, and thus will represent a token which has been
 /// validated via signature, expiration time, and presence in the database.
@@ -121,10 +166,24 @@ pub struct VerifiedToken {
     pub claims: ClaimSet,
 }
 
+impl VerifiedToken {
+    /// Given a `VerifiedToken`, pass the resource name and permissions to a user-defined function. The
+    /// function should return true if the caller should be granted access to the resource and false,
+    /// otherwise. That result will be passed back to the caller.
+    pub fn check_authorizations<F: FnOnce(&ResourceName, &Permissions) -> bool>(&self, f: F) -> bool {
+        f(&self.claims.resource, &self.claims.permissions)
+    }
+}
+
+
 impl OrizenticCtx {
     /// Create a new Orizentic Context with an initial set of claims.
-    pub fn new_ctx(secret: Secret, claims_lst: Vec<ClaimSet>) -> OrizenticCtx {
-        OrizenticCtx(secret, HashMap::new())
+    pub fn new(secret: Secret, claims_lst: Vec<ClaimSet>) -> OrizenticCtx {
+        let mut hm = HashMap::new();
+        for claimset in claims_lst {
+            hm.insert(claimset.id.clone(), claimset);
+        }
+        OrizenticCtx(secret, hm)
     }
 
     /// Validate a token by checking its signature, that it is not expired, and that it is still
@@ -156,7 +215,7 @@ impl OrizenticCtx {
         // it is necessary to first decode the token because we need the validator to know whether
         // to attempt to validate the expiration. Without that check, the validator will fail any
         // expiration set to None.
-        match decode_text(text) {
+        match UnverifiedToken::decode_text(text) {
             Ok(unverified) => self.validate_token(&unverified),
             Err(err) => Err(err),
         }
@@ -210,52 +269,4 @@ impl OrizenticCtx {
     }
 }
 
-/// Create a new `ClaimSet`. This will return a claimset with the expiration time calculated from
-/// the TTL if the TTL is provided. No expiration will be set if no TTL is provided.
-pub fn create_claimset(issuer: Issuer,
-                       ttl: Option<TTL>,
-                       resource_name: ResourceName,
-                       user_name: Username,
-                       perms: Permissions) -> ClaimSet {
-    let issued_at: DateTime<Utc> = Utc::now().with_nanosecond(0).unwrap();
-    let expiration = match ttl {
-        Some(TTL(ttl_)) => issued_at.checked_add_signed(ttl_),
-        None => None,
-    };
-    ClaimSet{
-        id: String::from(Uuid::new_v4().hyphenated().to_string()),
-        audience: user_name,
-        expiration,
-        issuer,
-        issued_at,
-        resource: resource_name,
-        permissions: perms,
-    }
-}
-
-/// Decode a JWT text string without verification
-pub fn decode_text(text: &String) -> Result<UnverifiedToken, Error> {
-    let res = jwt::dangerous_unsafe_decode::<ClaimSetJS>(text);
-    match res {
-        Ok(res_) => Ok(UnverifiedToken{text: text.clone(), claims: res_.claims.to_claimset()}),
-        Err(err) => Err(Error::JWTError(err)),
-    }
-}
-
-/// Given a `VerifiedToken`, pass the resource name and permissions to a user-defined function. The
-/// function should return true if the caller should be granted access to the resource and false,
-/// otherwise. That result will be passed back to the caller.
-pub fn check_authorizations<F: FnOnce(&ResourceName, &Permissions) -> bool>(f: F, token: &VerifiedToken) -> bool {
-    f(&token.claims.resource, &token.claims.permissions)
-}
-
-
-pub fn to_json(claims: &ClaimSet) -> Result<String, serde_json::Error> {
-    serde_json::to_string(&(ClaimSetJS::from_claimset(claims)))
-}
-
-pub fn from_json(text: &String) -> Result<ClaimSet, serde_json::Error> {
-    serde_json::from_str(&text)
-        .map(|x| ClaimSetJS::to_claimset(&x))
-}
 
