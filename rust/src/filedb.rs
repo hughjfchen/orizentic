@@ -1,35 +1,38 @@
+extern crate serde_json;
 
 use core;
 
 use std::fs::File;
 use std::path::Path;
-use std::io::{ BufReader, BufRead, Error, Lines, Write };
+use std::io::{ Read, Error, Lines, Write };
 
 pub fn save_claims_to_file(claimsets: &Vec<&core::ClaimSet>, path: &String) -> Result<(), Error> {
     let path = Path::new(path);
     let mut file = File::create(&path)?;
 
-    for claimset in claimsets.iter() {
-        let claimset_str = core::to_json(claimset)?;
-        file.write_fmt(format_args!("{}\n", claimset_str))?;
-    };
+    let claimsets_js: Vec<core::ClaimSetJS> = claimsets
+        .into_iter()
+        .map(|claims| core::ClaimSetJS::from_claimset(claims))
+        .collect();
+    let claimset_str = serde_json::to_string(&claimsets_js)?;
+    file.write_fmt(format_args!("{}", claimset_str));
+
     Ok(())
 }
 
 pub fn load_claims_from_file(path: &String) -> Result<Vec<core::ClaimSet>, Error> {
     let path = Path::new(path);
-    let f = File::open(&path)?;
-    let mut file = BufReader::new(&f);
-    let mut res = Vec::new();
-    for line in file.lines() {
-        match line {
-            Ok(line_) => {
-                let val = core::from_json(&line_)?;
-                res.push(val);
-            },
-            Err(err) => return Err(err),
-        }
-    };
-    Ok(res)
+    let mut file = File::open(&path)?;
+    let mut text = String::new();
+
+    file.read_to_string(&mut text)?;
+
+    let claimsets_js: Vec<core::ClaimSetJS> = serde_json::from_str(&text)?;
+    let claimsets = claimsets_js
+        .into_iter()
+        .map(|cl_js| core::ClaimSetJS::to_claimset(&cl_js))
+        .collect();
+
+    Ok(claimsets)
 }
 

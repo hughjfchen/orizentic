@@ -293,7 +293,6 @@ fn claims_serialize_to_json() {
     let claims_ = from_json(&claim_str)
         .expect("from_json threw an error");
     assert_eq!(claims, claims_);
-    println!("[claim_str] {}", claim_str);
 }
 
 #[test]
@@ -317,10 +316,10 @@ fn save_and_load() {
     );
     ctx.add_claimset(claims2.clone());
 
-    let res = save_claims_to_file(&ctx.list_claimsets(), &String::from("tmp/claims.db"));
+    let res = save_claims_to_file(&ctx.list_claimsets(), &String::from("../tmp/claims.db"));
     assert!(res.is_ok());
 
-    let claimset = load_claims_from_file(&String::from("tmp/claims.db"));
+    let claimset = load_claims_from_file(&String::from("../tmp/claims.db"));
     match claimset {
         Ok(claimset_) => {
             assert!(claimset_.contains(&claims));

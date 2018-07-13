@@ -61,7 +61,7 @@ pub struct ClaimSet {
 /// ClaimSetJS is an intermediary data structure between JWT serialization and a more usable
 /// ClaimSet.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-struct ClaimSetJS {
+pub struct ClaimSetJS {
     jti: String,
     aud: String,
     exp: Option<i64>,
@@ -72,7 +72,7 @@ struct ClaimSetJS {
 }
 
 impl ClaimSetJS {
-    fn from_claimset(claims: &ClaimSet) -> ClaimSetJS {
+    pub fn from_claimset(claims: &ClaimSet) -> ClaimSetJS {
         ClaimSetJS{
             jti: claims.id.clone(),
             aud: claims.audience.0.clone(),
@@ -84,7 +84,7 @@ impl ClaimSetJS {
         }
     }
 
-    fn to_claimset(&self) -> ClaimSet {
+    pub fn to_claimset(&self) -> ClaimSet {
         ClaimSet{
             id: self.jti.clone(),
             audience: Username(self.aud.clone()),

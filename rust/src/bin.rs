@@ -1,10 +1,13 @@
 extern crate clap;
+extern crate itertools;
 extern crate orizentic;
 
-use orizentic::*;
-// use orizentic::filedb;
 use clap::{Arg, App, SubCommand, ArgMatches};
 use std::env;
+use itertools::Itertools;
+
+use orizentic::*;
+
 
 // ORIZENTIC_DB
 // ORIZENTIC_SECRET
@@ -49,7 +52,32 @@ pub fn main() {
 
 
 fn list_tokens(db_path: Option<String>) {
-    println!("list tokens");
+    let db_path_ = db_path.expect("ORIZENTIC_DB is required for this operation");
+    let claimsets = orizentic::filedb::load_claims_from_file(&db_path_);
+    match claimsets {
+        Ok(claimsets_) => {
+            for claimset in claimsets_ {
+                println!("[{}]", claimset.id);
+                println!("Audience:         {}", claimset.audience.0);
+                match claimset.expiration {
+                    Some(expiration) => println!("Expiration:       {}", expiration.format("%Y-%m-%d %H:%M:%S")),
+                    None => println!("Expiration:       None"),
+                }
+                println!("Issuer:           {}", claimset.issuer.0);
+                println!("Issued At:        {}",
+                    claimset.issued_at.format("%Y-%m-%d %H:%M:%S"));
+                println!("Resource Name:    {}", claimset.resource.0);
+
+                let perm_val: String = claimset.permissions.0.clone().into_iter().intersperse(String::from(", ")).collect();
+                println!("Permissions:      {}", perm_val);
+                println!("")
+            }
+        },
+        Err(err) => {
+            println!("claimset failed to load: {}", err);
+            std::process::exit(1);
+        },
+    }
 }
 
 
