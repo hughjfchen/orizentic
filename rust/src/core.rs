@@ -62,17 +62,19 @@ pub struct ClaimSet {
 impl ClaimSet {
     /// Create a new `ClaimSet`. This will return a claimset with the expiration time calculated
     /// from the TTL if the TTL is provided. No expiration will be set if no TTL is provided.
-    pub fn new(issuer: Issuer,
-               ttl: Option<TTL>,
-               resource_name: ResourceName,
-               user_name: Username,
-               perms: Permissions) -> ClaimSet {
+    pub fn new(
+        issuer: Issuer,
+        ttl: Option<TTL>,
+        resource_name: ResourceName,
+        user_name: Username,
+        perms: Permissions,
+    ) -> ClaimSet {
         let issued_at: DateTime<Utc> = Utc::now().with_nanosecond(0).unwrap();
         let expiration = match ttl {
             Some(TTL(ttl_)) => issued_at.checked_add_signed(ttl_),
             None => None,
         };
-        ClaimSet{
+        ClaimSet {
             id: String::from(Uuid::new_v4().hyphenated().to_string()),
             audience: user_name,
             expiration,
@@ -88,8 +90,7 @@ impl ClaimSet {
     }
 
     pub fn from_json(text: &String) -> Result<ClaimSet, serde_json::Error> {
-        serde_json::from_str(&text)
-            .map(|x| ClaimSetJS::to_claimset(&x))
+        serde_json::from_str(&text).map(|x| ClaimSetJS::to_claimset(&x))
     }
 }
 
@@ -108,7 +109,7 @@ pub struct ClaimSetJS {
 
 impl ClaimSetJS {
     pub fn from_claimset(claims: &ClaimSet) -> ClaimSetJS {
-        ClaimSetJS{
+        ClaimSetJS {
             jti: claims.id.clone(),
             aud: claims.audience.0.clone(),
             exp: claims.expiration.map(|t| t.timestamp()),
@@ -120,7 +121,7 @@ impl ClaimSetJS {
     }
 
     pub fn to_claimset(&self) -> ClaimSet {
-        ClaimSet{
+        ClaimSet {
             id: self.jti.clone(),
             audience: Username(self.aud.clone()),
             expiration: self.exp.map(|t| Utc.timestamp(t, 0)),
@@ -152,7 +153,10 @@ impl UnverifiedToken {
     pub fn decode_text(text: &String) -> Result<UnverifiedToken, Error> {
         let res = jwt::dangerous_unsafe_decode::<ClaimSetJS>(text);
         match res {
-            Ok(res_) => Ok(UnverifiedToken{text: text.clone(), claims: res_.claims.to_claimset()}),
+            Ok(res_) => Ok(UnverifiedToken {
+                text: text.clone(),
+                claims: res_.claims.to_claimset(),
+            }),
             Err(err) => Err(Error::JWTError(err)),
         }
     }
@@ -171,7 +175,10 @@ impl VerifiedToken {
     /// Given a `VerifiedToken`, pass the resource name and permissions to a user-defined function. The
     /// function should return true if the caller should be granted access to the resource and false,
     /// otherwise. That result will be passed back to the caller.
-    pub fn check_authorizations<F: FnOnce(&ResourceName, &Permissions) -> bool>(&self, f: F) -> bool {
+    pub fn check_authorizations<F: FnOnce(&ResourceName, &Permissions) -> bool>(
+        &self,
+        f: F,
+    ) -> bool {
         f(&self.claims.resource, &self.claims.permissions)
     }
 }
@@ -193,7 +200,10 @@ impl OrizenticCtx {
     pub fn validate_token(&self, token: &UnverifiedToken) -> Result<VerifiedToken, Error> {
         let validator = match token.claims.expiration {
             Some(_) => jwt::Validation::default(),
-            None => jwt::Validation{ validate_exp: false, ..jwt::Validation::default() },
+            None => jwt::Validation {
+                validate_exp: false,
+                ..jwt::Validation::default()
+            },
         };
         let res = jwt::decode::<ClaimSetJS>(&token.text, &(self.0).0, &validator);
         match res {
@@ -201,11 +211,14 @@ impl OrizenticCtx {
                 let claims = res_.claims;
                 let in_db = self.1.get(&claims.jti);
                 if in_db.is_some() {
-                    Ok(VerifiedToken{text: token.text.clone(), claims: claims.to_claimset()})
+                    Ok(VerifiedToken {
+                        text: token.text.clone(),
+                        claims: claims.to_claimset(),
+                    })
                 } else {
                     Err(Error::UnknownToken())
                 }
-            },
+            }
             Err(err) => Err(Error::JWTError(err)),
         }
     }
@@ -239,11 +252,13 @@ impl OrizenticCtx {
     }
 
     /// *NOT IMPLEMENTED*
-    pub fn replace_claimsets(&mut self, claims_lst: Vec<ClaimSet>) { }
+    pub fn replace_claimsets(&mut self, _claims_lst: Vec<ClaimSet>) {
+        unimplemented!()
+    }
 
     /// List all of the `ClaimSet` IDs in the database.
     pub fn list_claimsets(&self) -> Vec<&ClaimSet> {
-        self.1.values().map(| item | item).collect()
+        self.1.values().map(|item| item).collect()
     }
 
     /// Find a `ClaimSet` by ID.
@@ -255,13 +270,16 @@ impl OrizenticCtx {
     pub fn encode_claimset(&self, claims: &ClaimSet) -> Result<VerifiedToken, Error> {
         let in_db = self.1.get(&claims.id);
         if in_db.is_some() {
-            let text = jwt::encode(&jwt::Header::default(), &ClaimSetJS::from_claimset(&claims), &(self.0).0);
+            let text = jwt::encode(
+                &jwt::Header::default(),
+                &ClaimSetJS::from_claimset(&claims),
+                &(self.0).0,
+            );
             match text {
-                Ok(text_) => 
-                    Ok(VerifiedToken{
-                        text: text_,
-                        claims: claims.clone(),
-                    }),
+                Ok(text_) => Ok(VerifiedToken {
+                    text: text_,
+                    claims: claims.clone(),
+                }),
                 Err(err) => Err(Error::JWTError(err)),
             }
         } else {
@@ -269,5 +287,3 @@ impl OrizenticCtx {
         }
     }
 }
-
-

@@ -4,7 +4,7 @@ use core;
 
 use std::fs::File;
 use std::path::Path;
-use std::io::{ Read, Error, Write };
+use std::io::{Read, Error, Write};
 
 pub fn save_claims_to_file(claimsets: &Vec<&core::ClaimSet>, path: &String) -> Result<(), Error> {
     let path = Path::new(path);
@@ -15,7 +15,7 @@ pub fn save_claims_to_file(claimsets: &Vec<&core::ClaimSet>, path: &String) -> R
         .map(|claims| core::ClaimSetJS::from_claimset(claims))
         .collect();
     let claimset_str = serde_json::to_string(&claimsets_js)?;
-    file.write_fmt(format_args!("{}", claimset_str));
+    file.write_fmt(format_args!("{}", claimset_str))?;
 
     Ok(())
 }
@@ -35,4 +35,3 @@ pub fn load_claims_from_file(path: &String) -> Result<Vec<core::ClaimSet>, Error
 
     Ok(claimsets)
 }
-

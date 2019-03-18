@@ -1,10 +1,26 @@
 extern crate chrono;
 extern crate orizentic;
 
+use std::fs;
+use std::ops;
 use std::time;
 use std::thread;
 use orizentic::*;
 use orizentic::filedb::*;
+
+struct FileCleanup(String);
+
+impl FileCleanup {
+    fn new(path: &str) -> FileCleanup {
+        FileCleanup(String::from(path))
+    }
+}
+
+impl ops::Drop for FileCleanup {
+    fn drop(&mut self) {
+        fs::remove_file(&self.0).expect("failed to remove time series file");
+    }
+}
 
 #[test]
 fn can_create_a_new_claimset() {
@@ -14,7 +30,11 @@ fn can_create_a_new_claimset() {
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-1")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
     ctx.add_claimset(claims.clone());
     assert_eq!(claims.audience, Username(String::from("Savanni")));
@@ -24,7 +44,14 @@ fn can_create_a_new_claimset() {
     }
     assert_eq!(claims.issuer, Issuer(String::from("test")));
     assert_eq!(claims.resource, ResourceName(String::from("resource-1")));
-    assert_eq!(claims.permissions, Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]));
+    assert_eq!(
+        claims.permissions,
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ])
+    );
     {
         let tok_list = ctx.list_claimsets();
         assert_eq!(tok_list.len(), 1);
@@ -36,7 +63,11 @@ fn can_create_a_new_claimset() {
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-2")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
     ctx.add_claimset(claims2.clone());
 
@@ -57,14 +88,22 @@ fn can_retrieve_claim_by_id() {
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-1")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
     let claims2 = ClaimSet::new(
         Issuer(String::from("test")),
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-2")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
     ctx.add_claimset(claims.clone());
     ctx.add_claimset(claims2.clone());
@@ -85,14 +124,22 @@ fn can_revoke_claim_by_id() {
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-1")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
     let claims2 = ClaimSet::new(
         Issuer(String::from("test")),
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-2")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
 
     ctx.add_claimset(claims.clone());
@@ -115,14 +162,22 @@ fn can_revoke_a_token() {
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-1")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
     let claims2 = ClaimSet::new(
         Issuer(String::from("test")),
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-2")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
     ctx.add_claimset(claims.clone());
     ctx.add_claimset(claims2.clone());
@@ -143,7 +198,11 @@ fn rejects_tokens_with_an_invalid_secret() {
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-1")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
     ctx1.add_claimset(claims.clone());
     let encoded_token = ctx1.encode_claimset(&claims).ok().unwrap();
@@ -158,7 +217,11 @@ fn rejects_tokens_that_are_absent_from_the_database() {
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-1")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
     ctx.add_claimset(claims.clone());
     let encoded_token = ctx.encode_claimset(&claims).ok().unwrap();
@@ -175,7 +238,11 @@ fn validates_present_tokens_with_a_valid_secret() {
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-1")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
     ctx.add_claimset(claims.clone());
     let encoded_token = ctx.encode_claimset(&claims).ok().unwrap();
@@ -190,7 +257,11 @@ fn rejects_expired_tokens() {
         Some(TTL(chrono::Duration::seconds(1))),
         ResourceName(String::from("resource-1")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
     ctx.add_claimset(claims.clone());
     thread::sleep(time::Duration::from_secs(2));
@@ -206,7 +277,11 @@ fn accepts_tokens_that_have_no_expiration() {
         None,
         ResourceName(String::from("resource-1")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
     ctx.add_claimset(claims.clone());
     let encoded_token = ctx.encode_claimset(&claims).ok().unwrap();
@@ -221,13 +296,20 @@ fn authorizes_a_token_with_the_correct_resource_and_permissions() {
         None,
         ResourceName(String::from("resource-1")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
     ctx.add_claimset(claims.clone());
     let encoded_token = ctx.encode_claimset(&claims).ok().unwrap();
-    let token = ctx.decode_and_validate_text(&encoded_token.text).ok().unwrap();
-    let res = token.check_authorizations(
-        |rn: &ResourceName, perms: &Permissions| *rn == ResourceName(String::from("resource-1")) && perms.0.contains(&String::from("grant")));
+    let token = ctx.decode_and_validate_text(&encoded_token.text)
+        .ok()
+        .unwrap();
+    let res = token.check_authorizations(|rn: &ResourceName, perms: &Permissions| {
+        *rn == ResourceName(String::from("resource-1")) && perms.0.contains(&String::from("grant"))
+    });
     assert!(res);
 }
 
@@ -243,9 +325,12 @@ fn rejects_a_token_with_the_incorrect_permissions() {
     );
     ctx.add_claimset(claims.clone());
     let encoded_token = ctx.encode_claimset(&claims).ok().unwrap();
-    let token = ctx.decode_and_validate_text(&encoded_token.text).ok().unwrap();
-    let res = token.check_authorizations(
-        |rn: &ResourceName, perms: &Permissions| *rn == ResourceName(String::from("resource-1")) && perms.0.contains(&String::from("grant")));
+    let token = ctx.decode_and_validate_text(&encoded_token.text)
+        .ok()
+        .unwrap();
+    let res = token.check_authorizations(|rn: &ResourceName, perms: &Permissions| {
+        *rn == ResourceName(String::from("resource-1")) && perms.0.contains(&String::from("grant"))
+    });
     assert!(!res);
 }
 
@@ -257,13 +342,20 @@ fn rejects_a_token_with_the_incorrect_resource_name() {
         None,
         ResourceName(String::from("resource-2")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
     ctx.add_claimset(claims.clone());
     let encoded_token = ctx.encode_claimset(&claims).ok().unwrap();
-    let token = ctx.decode_and_validate_text(&encoded_token.text).ok().unwrap();
-    let res = token.check_authorizations(
-        |rn: &ResourceName, perms: &Permissions| *rn == ResourceName(String::from("resource-1")) && perms.0.contains(&String::from("grant")));
+    let token = ctx.decode_and_validate_text(&encoded_token.text)
+        .ok()
+        .unwrap();
+    let res = token.check_authorizations(|rn: &ResourceName, perms: &Permissions| {
+        *rn == ResourceName(String::from("resource-1")) && perms.0.contains(&String::from("grant"))
+    });
     assert!(!res);
 }
 
@@ -274,30 +366,37 @@ fn claims_serialize_to_json() {
         None,
         ResourceName(String::from("resource-2")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
 
     let expected_jti = format!("\"jti\":\"{}\"", claims.id);
 
-    let claim_str = claims.to_json()
-        .expect("to_json threw an error");
-        //.expect(assert!(false, format!("[claims_serilazie_to_json] {}", err)));
+    let claim_str = claims.to_json().expect("to_json threw an error");
+    //.expect(assert!(false, format!("[claims_serilazie_to_json] {}", err)));
     assert!(claim_str.contains(&expected_jti));
 
-    let claims_ = ClaimSet::from_json(&claim_str)
-        .expect("from_json threw an error");
+    let claims_ = ClaimSet::from_json(&claim_str).expect("from_json threw an error");
     assert_eq!(claims, claims_);
 }
 
 #[test]
 fn save_and_load() {
+    let _file_cleanup = FileCleanup::new("var/claims.db");
     let mut ctx = OrizenticCtx::new(Secret("ctx".to_string().into_bytes()), Vec::new());
     let claims = ClaimSet::new(
         Issuer(String::from("test")),
         None,
         ResourceName(String::from("resource-2")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
     ctx.add_claimset(claims.clone());
 
@@ -306,20 +405,23 @@ fn save_and_load() {
         Some(TTL(chrono::Duration::seconds(3600))),
         ResourceName(String::from("resource-2")),
         Username(String::from("Savanni")),
-        Permissions(vec![String::from("read"), String::from("write"), String::from("grant")]),
+        Permissions(vec![
+            String::from("read"),
+            String::from("write"),
+            String::from("grant"),
+        ]),
     );
     ctx.add_claimset(claims2.clone());
 
-    let res = save_claims_to_file(&ctx.list_claimsets(), &String::from("../tmp/claims.db"));
+    let res = save_claims_to_file(&ctx.list_claimsets(), &String::from("var/claims.db"));
     assert!(res.is_ok());
 
-    let claimset = load_claims_from_file(&String::from("../tmp/claims.db"));
+    let claimset = load_claims_from_file(&String::from("var/claims.db"));
     match claimset {
         Ok(claimset_) => {
             assert!(claimset_.contains(&claims));
             assert!(claimset_.contains(&claims2));
-        },
+        }
         Err(err) => assert!(false, err),
     }
 }
-
