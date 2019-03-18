@@ -8,6 +8,11 @@ extern crate uuid;
 use core::chrono::prelude::*;
 use core::uuid::Uuid;
 use std::collections::HashMap;
+use std::error;
+use std::fmt;
+use std::result;
+
+type Result<A> = result::Result<A, Error>;
 
 /// Orizentic Errors
 #[derive(Debug)]
@@ -16,7 +21,32 @@ pub enum Error {
     /// encapsulate the JWT library.
     JWTError(jwt::errors::Error),
     /// Token decoded and verified but was not present in the database.
-    UnknownToken(),
+    UnknownToken,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Error::JWTError(err) => write!(f, "JWT failed to decode: {}", err),
+            Error::UnknownToken => write!(f, "Token not recognized"),
+        }
+    }
+}
+
+impl error::Error for Error {
+    fn description(&self) -> &str {
+        match self {
+            Error::JWTError(ref err) => err.description(),
+            Error::UnknownToken => "Token not recognized",
+        }
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        match self {
+            Error::JWTError(ref err) => Some(err),
+            Error::UnknownToken => None,
+        }
+    }
 }
 
 /// ResourceName is application-defined and names a resource to which access should be controlled
@@ -85,11 +115,11 @@ impl ClaimSet {
         }
     }
 
-    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+    pub fn to_json(&self) -> result::Result<String, serde_json::Error> {
         serde_json::to_string(&(ClaimSetJS::from_claimset(self)))
     }
 
-    pub fn from_json(text: &String) -> Result<ClaimSet, serde_json::Error> {
+    pub fn from_json(text: &String) -> result::Result<ClaimSet, serde_json::Error> {
         serde_json::from_str(&text).map(|x| ClaimSetJS::to_claimset(&x))
     }
 }
@@ -150,7 +180,7 @@ pub struct UnverifiedToken {
 
 impl UnverifiedToken {
     /// Decode a JWT text string without verification
-    pub fn decode_text(text: &String) -> Result<UnverifiedToken, Error> {
+    pub fn decode_text(text: &String) -> Result<UnverifiedToken> {
         let res = jwt::dangerous_unsafe_decode::<ClaimSetJS>(text);
         match res {
             Ok(res_) => Ok(UnverifiedToken {
@@ -197,7 +227,7 @@ impl OrizenticCtx {
     /// Validate a token by checking its signature, that it is not expired, and that it is still
     /// present in the database. Return an error if any check fails, but return a `VerifiedToken`
     /// if it all succeeds.
-    pub fn validate_token(&self, token: &UnverifiedToken) -> Result<VerifiedToken, Error> {
+    pub fn validate_token(&self, token: &UnverifiedToken) -> Result<VerifiedToken> {
         let validator = match token.claims.expiration {
             Some(_) => jwt::Validation::default(),
             None => jwt::Validation {
@@ -216,7 +246,7 @@ impl OrizenticCtx {
                         claims: claims.to_claimset(),
                     })
                 } else {
-                    Err(Error::UnknownToken())
+                    Err(Error::UnknownToken)
                 }
             }
             Err(err) => Err(Error::JWTError(err)),
@@ -225,7 +255,7 @@ impl OrizenticCtx {
 
     /// Given a text string, as from a web application's `Authorization` header, decode the string
     /// and then validate the token.
-    pub fn decode_and_validate_text(&self, text: &String) -> Result<VerifiedToken, Error> {
+    pub fn decode_and_validate_text(&self, text: &String) -> Result<VerifiedToken> {
         // it is necessary to first decode the token because we need the validator to know whether
         // to attempt to validate the expiration. Without that check, the validator will fail any
         // expiration set to None.
@@ -267,7 +297,7 @@ impl OrizenticCtx {
     }
 
     /// Encode and sign a claimset, returning the result as a `VerifiedToken`.
-    pub fn encode_claimset(&self, claims: &ClaimSet) -> Result<VerifiedToken, Error> {
+    pub fn encode_claimset(&self, claims: &ClaimSet) -> Result<VerifiedToken> {
         let in_db = self.1.get(&claims.id);
         if in_db.is_some() {
             let text = jwt::encode(
@@ -283,7 +313,7 @@ impl OrizenticCtx {
                 Err(err) => Err(Error::JWTError(err)),
             }
         } else {
-            Err(Error::UnknownToken())
+            Err(Error::UnknownToken)
         }
     }
 }
