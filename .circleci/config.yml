@@ -55,7 +55,7 @@ jobs:
 
   build-rust:
     docker:
-      - image: rust:latest
+      - image: savannidgerinel/rust:latest
 
     working_directory: ~/repo
 
@@ -66,16 +66,17 @@ jobs:
           key: rust-{{ checksum "rust/Cargo.lock" }}
 
       - run:
-          name: test
-          command: |
-            cd rust
-            cargo test
-
-      - run:
           name: build
           command: |
             cd rust
-            cargo build --release
+            cargo build
+
+      - run:
+          name: test
+          command: |
+            cd rust
+            mkdir var
+            RUST_BACKTRACE=1 cargo test
 
       - save_cache:
           key: rust-{{ checksum "rust/Cargo.lock" }}
