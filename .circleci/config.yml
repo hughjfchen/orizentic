@@ -53,7 +53,7 @@ jobs:
             go get -u github.com/onsi/ginkgo/ginkgo
             ginkgo orizentic/...
 
-  build-rust:
+  build-rust-lfs:
     docker:
       - image: savannidgerinel/rust:latest
 
@@ -71,6 +71,11 @@ jobs:
             cd rust
             cargo build
 
+      - save_cache:
+          key: rust-{{ checksum "rust/Cargo.lock" }}
+          paths:
+            - "~/.cargo"
+
       - run:
           name: test
           command: |
@@ -82,6 +87,31 @@ jobs:
           key: rust-{{ checksum "rust/Cargo.lock" }}
           paths:
             - "~/.cargo"
+
+  build-rust-nix:
+    working_directory: ~/repo
+    parallelism: 1
+
+    docker:
+      - image: nixos/nix
+
+    steps:
+      - checkout
+
+      - restore_cache:
+          key: rust-{{ checksum "rust/Cargo.lock" }}
+
+      - run:
+          name: build
+          command: |
+            cd rust
+            nix-build
+
+      - save_cache:
+          key: rust-{{ checksum "rust/Cargo.lock" }}
+          paths:
+            - "/nix/store"
+
 
 workflows:
   version: 2
@@ -96,4 +126,5 @@ workflows:
 
   build-rust:
     jobs:
-      - build-rust
+      - build-rust-lfs
+      - build-rust-nix
