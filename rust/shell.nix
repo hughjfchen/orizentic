@@ -5,9 +5,9 @@ let
 in pkgs.stdenv.mkDerivation {
     name = "orizentic";
 
-    buildInputs = [ pkgs.rustc
-                    pkgs.cargo
-                    pkgs.rustfmt
+    buildInputs = [ unstable.rustc
+                    unstable.cargo
+                    unstable.rustfmt
                     unstable.carnix
                     frameworks.Security
                     frameworks.CoreFoundation
