@@ -1,19 +1,31 @@
-{ pkgs ? import <nixpkgs> {}
+{ pkgs ? import <nixpkgs-18.09> {}
+, unstable ? import <nixpkgs> {}
 , stdenv ? pkgs.stdenv
-, rustPlatform ? pkgs.rustPlatform
 , licenses ? pkgs.lib.licenses
 , maintainers ? pkgs.stdenv.maintainers }:
 let
+    rust = import ./nixpkgs/rust-1.33.nix {
+      mkDerivation = pkgs.stdenv.mkDerivation;
+      fetchurl = pkgs.fetchurl;
+      stdenv = pkgs.stdenv;
+    };
+
+    buildRustCrate = unstable.buildRustCrate.override {
+        crateOverrides = pkgs.defaultCrateOverrides // {
+            buildRustCrate = attrs: { rustc = rust.rustc; };
+        };
+    };
+
     cratesIO = import ./crates-io.nix {
         lib = stdenv.lib;
-        buildRustCrate = pkgs.buildRustCrate;
-        buildRustCrateHelpers = pkgs.buildRustCrateHelpers;
+        buildRustCrate = buildRustCrate;
+        buildRustCrateHelpers = unstable.buildRustCrateHelpers;
     };
     cargo = import ./Cargo.nix {
         lib = stdenv.lib;
         buildPlatform = stdenv.buildPlatform;
-        buildRustCrate = pkgs.buildRustCrate;
-        buildRustCrateHelpers = pkgs.buildRustCrateHelpers;
+        buildRustCrate = buildRustCrate;
+        buildRustCrateHelpers = unstable.buildRustCrateHelpers;
         cratesIO = cratesIO;
         fetchgit = pkgs.fetchgit;
     };
@@ -24,7 +36,8 @@ let
 
     orizentic = (cargo.orizentic {}).override {
         crateOverrides = pkgs.defaultCrateOverrides // {
-            orizentic = attrs: { buildInputs = [ pkgs.openssl ] ++ security; };
+            orizentic = attrs: { buildInputs = [ pkgs.openssl ] ++ security;
+                               };
         };
     };
 

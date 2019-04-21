@@ -1190,6 +1190,20 @@ rec {
 
 
 # end
+# version_check-0.1.5
+
+  crates.version_check."0.1.5" = deps: { features?(features_.version_check."0.1.5" deps {}) }: buildRustCrate {
+    crateName = "version_check";
+    version = "0.1.5";
+    authors = [ "Sergio Benitez <sb@sergio.bz>" ];
+    sha256 = "1yrx9xblmwbafw2firxyqbj8f771kkzfd24n3q7xgwiqyhi0y8qd";
+  };
+  features_.version_check."0.1.5" = deps: f: updateFeatures f (rec {
+    version_check."0.1.5".default = (f.version_check."0.1.5".default or true);
+  }) [];
+
+
+# end
 # winapi-0.3.5
 
   crates.winapi."0.3.5" = deps: { features?(features_.winapi."0.3.5" deps {}) }: buildRustCrate {

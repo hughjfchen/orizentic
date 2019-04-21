@@ -39,6 +39,7 @@ unicode-xid-0.1.0
 untrusted-0.6.2
 uuid-0.6.5
 vec_map-0.8.1
+version_check-0.1.5
 winapi-0.3.5
 winapi-i686-pc-windows-gnu-0.4.0
 winapi-x86_64-pc-windows-gnu-0.4.0

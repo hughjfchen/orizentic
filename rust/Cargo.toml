@@ -2,6 +2,10 @@
 name = "orizentic"
 version = "0.1.0"
 authors = ["Savanni D'Gerinel <savanni@luminescent-dreams.com>"]
+build = "build.rs"
+
+[build-dependencies]
+version_check = "0.1.5"
 
 [dependencies]
 yaml-rust = "0.4.0"
@@ -13,6 +17,7 @@ uuid = { version = "0.6.5", features = ["v4"] }
 clap = "2.32.0"
 serde_json = "1.0.22"
 itertools = "0.7.8"
+version_check = "0.1.5"
 
 [badges]
 circle-ci = { repository = "luminescent-dreams/orizentic", branch = "sol" }

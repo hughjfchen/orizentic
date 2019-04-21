@@ -11,7 +11,8 @@ let
 in pkgs.stdenv.mkDerivation {
     name = "orizentic";
 
-    buildInputs = [ rust
+    buildInputs = [ rust.rustc
+                    rust.cargo
                     unstable.carnix
                     frameworks.Security
                     frameworks.CoreFoundation

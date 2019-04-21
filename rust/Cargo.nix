@@ -16,6 +16,7 @@ rec {
       libPath = "src/lib.rs";
       crateBin =
         [{  name = "orizentic";  path = "src/bin.rs"; }];
+      build = "build.rs";
       dependencies = mapFeatures features ([
         (cratesIO.crates."chrono"."${deps."orizentic"."0.1.0"."chrono"}" deps)
         (cratesIO.crates."clap"."${deps."orizentic"."0.1.0"."clap"}" deps)
@@ -25,7 +26,12 @@ rec {
         (cratesIO.crates."serde_derive"."${deps."orizentic"."0.1.0"."serde_derive"}" deps)
         (cratesIO.crates."serde_json"."${deps."orizentic"."0.1.0"."serde_json"}" deps)
         (cratesIO.crates."uuid"."${deps."orizentic"."0.1.0"."uuid"}" deps)
+        (cratesIO.crates."version_check"."${deps."orizentic"."0.1.0"."version_check"}" deps)
         (cratesIO.crates."yaml_rust"."${deps."orizentic"."0.1.0"."yaml_rust"}" deps)
+      ]);
+
+      buildDependencies = mapFeatures features ([
+        (cratesIO.crates."version_check"."${deps."orizentic"."0.1.0"."version_check"}" deps)
       ]);
     };
     features_.orizentic."0.1.0" = deps: f: updateFeatures f (rec {
@@ -44,6 +50,7 @@ rec {
         { "${deps.orizentic."0.1.0".uuid}"."v4" = true; }
         { "${deps.orizentic."0.1.0".uuid}".default = true; }
       ];
+      version_check."${deps.orizentic."0.1.0".version_check}".default = true;
       yaml_rust."${deps.orizentic."0.1.0".yaml_rust}".default = true;
     }) [
       (cratesIO.features_.chrono."${deps."orizentic"."0.1.0"."chrono"}" deps)
@@ -54,7 +61,9 @@ rec {
       (cratesIO.features_.serde_derive."${deps."orizentic"."0.1.0"."serde_derive"}" deps)
       (cratesIO.features_.serde_json."${deps."orizentic"."0.1.0"."serde_json"}" deps)
       (cratesIO.features_.uuid."${deps."orizentic"."0.1.0"."uuid"}" deps)
+      (cratesIO.features_.version_check."${deps."orizentic"."0.1.0"."version_check"}" deps)
       (cratesIO.features_.yaml_rust."${deps."orizentic"."0.1.0"."yaml_rust"}" deps)
+      (cratesIO.features_.version_check."${deps."orizentic"."0.1.0"."version_check"}" deps)
     ];
 
 
@@ -131,6 +140,7 @@ rec {
     serde_derive = "1.0.69";
     serde_json = "1.0.22";
     uuid = "0.6.5";
+    version_check = "0.1.5";
     yaml_rust = "0.4.0";
   };
   deps.proc_macro2."0.4.6" = {
@@ -193,6 +203,7 @@ rec {
     rand = "0.4.2";
   };
   deps.vec_map."0.8.1" = {};
+  deps.version_check."0.1.5" = {};
   deps.winapi."0.3.5" = {
     winapi_i686_pc_windows_gnu = "0.4.0";
     winapi_x86_64_pc_windows_gnu = "0.4.0";
